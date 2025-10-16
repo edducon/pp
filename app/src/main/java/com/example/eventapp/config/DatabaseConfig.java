@@ -34,6 +34,10 @@ public class DatabaseConfig {
         return Integer.parseInt(properties.getProperty("app.datasource.maximumPoolSize", "10"));
     }
 
+    public String getDriverClassName() {
+        return properties.getProperty("app.datasource.driverClassName", "com.mysql.cj.jdbc.Driver");
+    }
+
     private String requireProperty(String key) {
         String value = properties.getProperty(key);
         if (value == null || value.isBlank()) {

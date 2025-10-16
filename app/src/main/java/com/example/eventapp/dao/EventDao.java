@@ -3,10 +3,20 @@ package com.example.eventapp.dao;
 import com.example.eventapp.model.*;
 
 import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class EventDao {
     private final DataSource dataSource;
@@ -204,12 +214,16 @@ public class EventDao {
             try (ResultSet rs = statement.executeQuery()) {
                 List<JuryMember> jury = new ArrayList<>();
                 while (rs.next()) {
+                    Long directionId = rs.getObject("d_id", Long.class);
+                    Direction direction = null;
+                    if (directionId != null) {
+                        direction = new Direction(directionId, rs.getString("d_name"));
+                    }
                     jury.add(new JuryMember(rs.getLong("id"), rs.getString("id_number"),
                             new FullName(rs.getString("last_name"), rs.getString("first_name"), rs.getString("middle_name")),
                             rs.getString("email"), rs.getDate("birth_date").toLocalDate(),
                             rs.getString("country_code"), rs.getInt("city_id"), rs.getString("phone"),
-                            Gender.fromDatabase(rs.getString("gender")), rs.getString("photo_path"),
-                            Optional.ofNullable(rs.getObject("d_id", Long.class)).map(id -> new Direction(id, rs.getString("d_name"))).orElse(null)));
+                            Gender.fromDatabase(rs.getString("gender")), rs.getString("photo_path"), direction));
                 }
                 return jury;
             }
@@ -254,12 +268,16 @@ public class EventDao {
                     Moderator moderator = null;
                     Long moderatorId = rs.getObject("moderator_id", Long.class);
                     if (moderatorId != null) {
+                        Long directionId = rs.getObject("d_id", Long.class);
+                        Direction direction = null;
+                        if (directionId != null) {
+                            direction = new Direction(directionId, rs.getString("d_name"));
+                        }
                         moderator = new Moderator(moderatorId, rs.getString("moderator_id_number"),
                                 new FullName(rs.getString("last_name"), rs.getString("first_name"), rs.getString("middle_name")),
                                 rs.getString("email"), rs.getDate("birth_date").toLocalDate(), rs.getString("country_code"),
                                 rs.getInt("city_id"), rs.getString("phone"), Gender.fromDatabase(rs.getString("gender")),
-                                rs.getString("photo_path"),
-                                Optional.ofNullable(rs.getObject("d_id", Long.class)).map(id -> new Direction(id, rs.getString("d_name"))).orElse(null));
+                                rs.getString("photo_path"), direction);
                     }
                     resources.add(new ActivityResource(rs.getLong("id"), activityId, rs.getString("name"),
                             rs.getString("resource_path"), moderator,

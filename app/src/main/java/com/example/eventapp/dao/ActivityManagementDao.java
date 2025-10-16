@@ -133,9 +133,11 @@ public class ActivityManagementDao {
                 Moderator moderator = null;
                 Long moderatorId = rs.getObject("moderator_id", Long.class);
                 if (moderatorId != null) {
-                    Direction direction = Optional.ofNullable(rs.getObject("dir_id", Long.class))
-                            .map(dirId -> new Direction(dirId, rs.getString("dir_name")))
-                            .orElse(null);
+                    Long directionId = rs.getObject("dir_id", Long.class);
+                    Direction direction = null;
+                    if (directionId != null) {
+                        direction = new Direction(directionId, rs.getString("dir_name"));
+                    }
                     moderator = new Moderator(moderatorId, rs.getString("id_number"),
                             new FullName(rs.getString("last_name"), rs.getString("first_name"), rs.getString("middle_name")),
                             rs.getString("email"), rs.getDate("birth_date").toLocalDate(), rs.getString("country_code"),

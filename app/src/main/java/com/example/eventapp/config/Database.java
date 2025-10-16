@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
 import javax.sql.DataSource;
-
 public class Database implements AutoCloseable {
     private final HikariDataSource dataSource;
 
@@ -15,6 +14,10 @@ public class Database implements AutoCloseable {
         hikariConfig.setPassword(config.getPassword());
         hikariConfig.setMaximumPoolSize(config.getMaximumPoolSize());
         hikariConfig.setPoolName("event-app-pool");
+        String driverClass = config.getDriverClassName();
+        if (driverClass != null && !driverClass.isBlank()) {
+            hikariConfig.setDriverClassName(driverClass);
+        }
         this.dataSource = new HikariDataSource(hikariConfig);
     }
 
