@@ -1,52 +1,38 @@
 package com.example.eventapp.service;
 
-import com.example.eventapp.dao.ActivityManagementDao;
-import com.example.eventapp.dao.CityDao;
-import com.example.eventapp.dao.DirectionDao;
-import com.example.eventapp.dao.JuryMemberDao;
-import com.example.eventapp.dao.ModerationRequestDao;
-import com.example.eventapp.dao.ModeratorDao;
-import com.example.eventapp.dao.OrganizerDao;
-import com.example.eventapp.dao.ParticipantDao;
+import com.example.eventapp.repository.AccountRepository;
+import com.example.eventapp.repository.CityRepository;
+import com.example.eventapp.repository.DirectionRepository;
+import com.example.eventapp.repository.EventRepository;
+import com.example.eventapp.repository.EventTaskRepository;
+import com.example.eventapp.repository.ModerationRequestRepository;
+import com.example.eventapp.repository.ParticipantRegistrationRepository;
+
+import javax.sql.DataSource;
 
 public class AppContext {
     private final AuthenticationService authenticationService;
     private final EventService eventService;
     private final RegistrationService registrationService;
-    private final ModeratorService moderatorService;
-    private final ActivityManagementDao activityManagementDao;
-    private final ParticipantDao participantDao;
-    private final JuryMemberDao juryMemberDao;
-    private final ModeratorDao moderatorDao;
-    private final OrganizerDao organizerDao;
-    private final CityDao cityDao;
-    private final DirectionDao directionDao;
-    private final ModerationRequestDao moderationRequestDao;
+    private final ModerationService moderationService;
+    private final DirectoryService directoryService;
+    private final ReferenceDataService referenceDataService;
 
-    public AppContext(AuthenticationService authenticationService,
-                      EventService eventService,
-                      RegistrationService registrationService,
-                      ModeratorService moderatorService,
-                      ActivityManagementDao activityManagementDao,
-                      ParticipantDao participantDao,
-                      JuryMemberDao juryMemberDao,
-                      ModeratorDao moderatorDao,
-                      OrganizerDao organizerDao,
-                      CityDao cityDao,
-                      DirectionDao directionDao,
-                      ModerationRequestDao moderationRequestDao) {
-        this.authenticationService = authenticationService;
-        this.eventService = eventService;
-        this.registrationService = registrationService;
-        this.moderatorService = moderatorService;
-        this.activityManagementDao = activityManagementDao;
-        this.participantDao = participantDao;
-        this.juryMemberDao = juryMemberDao;
-        this.moderatorDao = moderatorDao;
-        this.organizerDao = organizerDao;
-        this.cityDao = cityDao;
-        this.directionDao = directionDao;
-        this.moderationRequestDao = moderationRequestDao;
+    public AppContext(DataSource dataSource) {
+        AccountRepository accountRepository = new AccountRepository(dataSource);
+        CityRepository cityRepository = new CityRepository(dataSource);
+        DirectionRepository directionRepository = new DirectionRepository(dataSource);
+        EventRepository eventRepository = new EventRepository(dataSource);
+        EventTaskRepository taskRepository = new EventTaskRepository(dataSource);
+        ModerationRequestRepository moderationRequestRepository = new ModerationRequestRepository(dataSource);
+        ParticipantRegistrationRepository registrationRepository = new ParticipantRegistrationRepository(dataSource);
+
+        this.authenticationService = new AuthenticationService(accountRepository);
+        this.eventService = new EventService(eventRepository, taskRepository);
+        this.registrationService = new RegistrationService(registrationRepository);
+        this.moderationService = new ModerationService(moderationRequestRepository, eventRepository);
+        this.directoryService = new DirectoryService(accountRepository);
+        this.referenceDataService = new ReferenceDataService(cityRepository, directionRepository);
     }
 
     public AuthenticationService authenticationService() {
@@ -61,39 +47,15 @@ public class AppContext {
         return registrationService;
     }
 
-    public ModeratorService moderatorService() {
-        return moderatorService;
+    public ModerationService moderationService() {
+        return moderationService;
     }
 
-    public ActivityManagementDao activityManagementDao() {
-        return activityManagementDao;
+    public DirectoryService directoryService() {
+        return directoryService;
     }
 
-    public ParticipantDao participantDao() {
-        return participantDao;
-    }
-
-    public JuryMemberDao juryMemberDao() {
-        return juryMemberDao;
-    }
-
-    public ModeratorDao moderatorDao() {
-        return moderatorDao;
-    }
-
-    public OrganizerDao organizerDao() {
-        return organizerDao;
-    }
-
-    public CityDao cityDao() {
-        return cityDao;
-    }
-
-    public DirectionDao directionDao() {
-        return directionDao;
-    }
-
-    public ModerationRequestDao moderationRequestDao() {
-        return moderationRequestDao;
+    public ReferenceDataService referenceDataService() {
+        return referenceDataService;
     }
 }

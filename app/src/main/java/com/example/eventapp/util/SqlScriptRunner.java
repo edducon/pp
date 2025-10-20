@@ -10,28 +10,39 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.stream.Collectors;
 
+/**
+ * Utility that executes SQL scripts shipped inside the application's resources.
+ */
 public final class SqlScriptRunner {
+
     private SqlScriptRunner() {
     }
 
-    public static void runScript(DataSource dataSource, String resourcePath) throws IOException, SQLException {
-        try (InputStream in = SqlScriptRunner.class.getClassLoader().getResourceAsStream(resourcePath)) {
-            if (in == null) {
-                throw new IOException("SQL script not found: " + resourcePath);
+    public static void runScript(DataSource dataSource, String resourcePath) {
+        try (InputStream inputStream = SqlScriptRunner.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (inputStream == null) {
+                throw new IllegalArgumentException("Resource '" + resourcePath + "' not found");
             }
-            String sql = new BufferedReader(new InputStreamReader(in)).lines().collect(Collectors.joining("\n"));
+            String sql = new BufferedReader(new InputStreamReader(inputStream))
+                    .lines()
+                    .collect(Collectors.joining("\n"));
             executeSql(dataSource, sql);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load SQL resource: " + resourcePath, e);
         }
     }
 
-    private static void executeSql(DataSource dataSource, String sql) throws SQLException {
+    private static void executeSql(DataSource dataSource, String sql) {
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            for (String command : sql.split(";\\s*\n")) {
-                String trimmed = command.trim();
-                if (!trimmed.isEmpty()) {
-                    statement.execute(trimmed);
+            for (String part : sql.split(";")) {
+                String trimmed = part.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
                 }
+                statement.execute(trimmed);
             }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to execute SQL script", e);
         }
     }
 }
