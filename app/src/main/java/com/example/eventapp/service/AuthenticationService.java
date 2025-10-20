@@ -1,63 +1,81 @@
 package com.example.eventapp.service;
 
-import com.example.eventapp.dao.JuryMemberDao;
-import com.example.eventapp.dao.ModeratorDao;
-import com.example.eventapp.dao.OrganizerDao;
-import com.example.eventapp.dao.ParticipantDao;
-import com.example.eventapp.model.AuthenticatedUser;
-import com.example.eventapp.model.JuryMember;
-import com.example.eventapp.model.Moderator;
-import com.example.eventapp.model.Organizer;
-import com.example.eventapp.model.Participant;
-import com.example.eventapp.model.UserAccount;
+import com.example.eventapp.domain.Account;
+import com.example.eventapp.domain.AuthenticatedUser;
+import com.example.eventapp.domain.Role;
+import com.example.eventapp.repository.AccountRepository;
 import com.example.eventapp.util.PasswordHasher;
 
 import java.util.Optional;
 
 public class AuthenticationService {
-    private final OrganizerDao organizerDao;
-    private final ParticipantDao participantDao;
-    private final ModeratorDao moderatorDao;
-    private final JuryMemberDao juryMemberDao;
+    private final AccountRepository accountRepository;
 
-    public AuthenticationService(OrganizerDao organizerDao, ParticipantDao participantDao,
-                                 ModeratorDao moderatorDao, JuryMemberDao juryMemberDao) {
-        this.organizerDao = organizerDao;
-        this.participantDao = participantDao;
-        this.moderatorDao = moderatorDao;
-        this.juryMemberDao = juryMemberDao;
+    public AuthenticationService(AccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
     }
 
-    public Optional<AuthenticatedUser> authenticate(String idNumber, String password) {
-        Optional<Organizer> organizer = organizerDao.findByIdNumber(idNumber);
-        if (organizer.isPresent() && passwordMatches(password, organizerDao.findPasswordHash(idNumber))) {
-            return Optional.of(new AuthenticatedUser(organizer.get()));
-        }
-        Optional<Participant> participant = participantDao.findByIdNumber(idNumber);
-        if (participant.isPresent() && passwordMatches(password, participantDao.findPasswordHash(idNumber))) {
-            return Optional.of(new AuthenticatedUser(participant.get()));
-        }
-        Optional<Moderator> moderator = moderatorDao.findByIdNumber(idNumber);
-        if (moderator.isPresent() && passwordMatches(password, moderatorDao.findPasswordHash(idNumber))) {
-            return Optional.of(new AuthenticatedUser(moderator.get()));
-        }
-        Optional<JuryMember> jury = juryMemberDao.findByIdNumber(idNumber);
-        if (jury.isPresent() && passwordMatches(password, juryMemberDao.findPasswordHash(idNumber))) {
-            return Optional.of(new AuthenticatedUser(jury.get()));
-        }
-        return Optional.empty();
+    public Optional<AuthenticatedUser> login(String email, String password) {
+        return accountRepository.findByEmail(email)
+                .filter(account -> PasswordHasher.matches(password, account.passwordHash()))
+                .map(this::toAuthenticatedUser);
     }
 
-    private boolean passwordMatches(String rawPassword, Optional<String> hash) {
-        return hash.filter(stored -> PasswordHasher.matches(rawPassword, stored)).isPresent();
+    public AuthenticatedUser registerParticipant(String email,
+                                                 String password,
+                                                 String firstName,
+                                                 String lastName,
+                                                 String middleName,
+                                                 String phone,
+                                                 String company,
+                                                 String jobTitle) {
+        Account account = accountRepository.createAccount(email, PasswordHasher.hash(password), Role.PARTICIPANT,
+                firstName, lastName, middleName, phone);
+        accountRepository.createParticipantProfile(account.id(), company, jobTitle);
+        return toAuthenticatedUser(account);
     }
 
-    public UserAccount reloadAccount(AuthenticatedUser user) {
-        return switch (user.getRole()) {
-            case ORGANIZER -> organizerDao.findById(user.getAccount().getId()).map(Organizer.class::cast).orElseThrow();
-            case PARTICIPANT -> participantDao.findByIdNumber(user.getAccount().getIdNumber()).map(Participant.class::cast).orElseThrow();
-            case MODERATOR -> moderatorDao.findById(user.getAccount().getId()).map(Moderator.class::cast).orElseThrow();
-            case JURY -> juryMemberDao.findByIdNumber(user.getAccount().getIdNumber()).map(JuryMember.class::cast).orElseThrow();
-        };
+    public AuthenticatedUser registerOrganizer(String email,
+                                               String password,
+                                               String firstName,
+                                               String lastName,
+                                               String middleName,
+                                               String phone,
+                                               String company,
+                                               String website) {
+        Account account = accountRepository.createAccount(email, PasswordHasher.hash(password), Role.ORGANIZER,
+                firstName, lastName, middleName, phone);
+        accountRepository.createOrganizerProfile(account.id(), company, website);
+        return toAuthenticatedUser(account);
+    }
+
+    public AuthenticatedUser registerModerator(String email,
+                                               String password,
+                                               String firstName,
+                                               String lastName,
+                                               String middleName,
+                                               String phone,
+                                               String expertise) {
+        Account account = accountRepository.createAccount(email, PasswordHasher.hash(password), Role.MODERATOR,
+                firstName, lastName, middleName, phone);
+        accountRepository.createModeratorProfile(account.id(), expertise);
+        return toAuthenticatedUser(account);
+    }
+
+    public AuthenticatedUser registerJury(String email,
+                                          String password,
+                                          String firstName,
+                                          String lastName,
+                                          String middleName,
+                                          String phone,
+                                          String achievements) {
+        Account account = accountRepository.createAccount(email, PasswordHasher.hash(password), Role.JURY,
+                firstName, lastName, middleName, phone);
+        accountRepository.createJuryProfile(account.id(), achievements);
+        return toAuthenticatedUser(account);
+    }
+
+    private AuthenticatedUser toAuthenticatedUser(Account account) {
+        return new AuthenticatedUser(account.id(), account.email(), account.fullName(), account.role());
     }
 }
