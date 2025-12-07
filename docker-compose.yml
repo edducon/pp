@@ -6,13 +6,13 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: qwerty12345
-      POSTGRES_DB: botdb
+      POSTGRES_DB: botdb1
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d botdb"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d botdb1"]
       interval: 5s
       timeout: 5s
       retries: 10
