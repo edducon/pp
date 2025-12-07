@@ -22,6 +22,14 @@ def countries_keyboard(countries: list[Country]) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def citizenship_confirm_keyboard(code: str, t) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t("actions.yes"), callback_data=f"cit-confirm:{code}")
+    builder.button(text=t("actions.no"), callback_data="cit-retry")
+    builder.adjust(2)
+    return builder.as_markup()
+
+
 def notification_window_keyboard(t) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for window in ["09:00-18:00", "09:00-22:00", "12:00-22:00"]:

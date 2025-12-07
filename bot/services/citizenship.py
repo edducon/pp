@@ -32,7 +32,7 @@ def normalize(value: str) -> str:
     return re.sub(r"[^a-zа-я0-9]", "", value.lower())
 
 
-def match_countries(query: str, limit: int = 5) -> tuple[list[Country], Country | None]:
+def match_countries(query: str) -> tuple[Country | None, Country | None, int]:
     norm = normalize(query)
     scored: list[tuple[int, Country]] = []
     for country in COUNTRIES:
@@ -41,9 +41,9 @@ def match_countries(query: str, limit: int = 5) -> tuple[list[Country], Country 
     scored.sort(key=lambda item: item[0], reverse=True)
 
     filtered = [(score, country) for score, country in scored if country.code != "RUS"]
-    matches = [country for score, country in filtered if score >= 50][:limit]
-    suggestion = filtered[0][1] if filtered else None
-    return matches, suggestion
+    best_score, best_country = (filtered[0] if filtered else (0, None))
+    accepted_country = best_country if best_score >= 50 else None
+    return accepted_country, best_country, best_score
 
 
 def is_visa_required(code: str) -> bool:
