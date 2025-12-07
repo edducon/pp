@@ -84,7 +84,11 @@ async def process_citizenship(message: Message, state: FSMContext, translator, s
             )
             for c, _ in matches[:5]
         ]
-        await message.answer(translator.t("start.choose_from_list"), reply_markup=citizenship_choices_keyboard(display))
+        await message.answer(
+            translator.t("start.choose_from_list"),
+            reply_markup=citizenship_choices_keyboard(display, translator.t("buttons.none_of_list")),
+        )
+        await state.set_state(Onboarding.confirming_citizenship)
 
 
 @router.callback_query(Onboarding.confirming_citizenship, lambda c: c.data and c.data.startswith("citizenship:"))

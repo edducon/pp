@@ -12,7 +12,8 @@
   },
   "buttons": {
     "share_phone": "Share contact",
-    "skip": "Skip"
+    "skip": "Skip",
+    "none_of_list": "None of the above"
   },
   "errors": {
     "citizenship_not_found": "Could not detect citizenship, please type full name",

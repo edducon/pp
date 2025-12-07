@@ -22,11 +22,11 @@ def citizenship_confirm_keyboard(country: str, code: str) -> InlineKeyboardMarku
     )
 
 
-def citizenship_choices_keyboard(choices: Iterable[Tuple[str, str]]) -> InlineKeyboardMarkup:
+def citizenship_choices_keyboard(choices: Iterable[Tuple[str, str]], none_label: str) -> InlineKeyboardMarkup:
     rows: List[List[InlineKeyboardButton]] = []
     for code, name in choices:
         rows.append([InlineKeyboardButton(text=name, callback_data=f"citizenship:choose:{code}:{name}")])
-    rows.append([InlineKeyboardButton(text="Ничего из списка", callback_data="citizenship:no_match")])
+    rows.append([InlineKeyboardButton(text=none_label, callback_data="citizenship:no_match")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

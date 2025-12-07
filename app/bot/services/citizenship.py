@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from rapidfuzz import fuzz
 
@@ -12,6 +12,10 @@ class Citizenship:
     name_en: str
     name_ru: str
     synonyms: List[str]
+
+
+def _normalize_value(value: str) -> str:
+    return value.strip().lower()
 
 
 CITIZENSHIPS: List[Citizenship] = [
@@ -28,15 +32,31 @@ CITIZENSHIPS: List[Citizenship] = [
 
 
 def _score(query: str, candidate: Citizenship) -> int:
-    return max(fuzz.partial_ratio(query, syn) for syn in candidate.synonyms)
+    normalized_query = _normalize_value(query)
+    synonyms = [_normalize_value(syn) for syn in candidate.synonyms]
+
+    # Short queries must match by prefix or substring to avoid noisy results like "az" vs "kaz".
+    if len(normalized_query) <= 3:
+        if any(syn.startswith(normalized_query) for syn in synonyms):
+            return 100
+        if any(normalized_query in syn for syn in synonyms):
+            return 85
+        return 0
+
+    base_score = max(fuzz.partial_ratio(normalized_query, syn) for syn in synonyms)
+    if any(syn.startswith(normalized_query) for syn in synonyms):
+        base_score = max(base_score, 100)
+    elif any(normalized_query in syn for syn in synonyms):
+        base_score = max(base_score, 90)
+    return base_score
 
 
 def find_matches(query: str) -> List[Tuple[Citizenship, int]]:
-    normalized = query.strip().lower()
+    normalized = _normalize_value(query)
     if not normalized:
         return []
     scores = [(_score(normalized, c), c) for c in CITIZENSHIPS]
-    scores = [(score, c) for score, c in scores if score >= 60]
+    scores = [(score, c) for score, c in scores if score >= 70]
     scores.sort(key=lambda item: item[0], reverse=True)
     return [(c, score) for score, c in scores]
 
