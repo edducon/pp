@@ -5,3 +5,4 @@ python-dotenv
 APScheduler>=3.10
 pytz
 rapidfuzz
+alembic
