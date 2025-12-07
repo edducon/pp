@@ -8,6 +8,7 @@
   "onboarding.choose_language": "Choose your language",
   "onboarding.enter_citizenship": "Enter your citizenship (name or abbreviation)",
   "onboarding.citizenship_not_found": "Country not found, try again",
+  "onboarding.citizenship_suggestion": "We couldn't find \"{query}\". Did you mean \"{suggestion}\"?",
   "onboarding.choose_from_list": "Choose the correct country",
   "onboarding.ask_phone": "Send a Russian phone number or type it manually",
   "onboarding.share_phone": "Share phone",

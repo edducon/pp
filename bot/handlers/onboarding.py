@@ -66,9 +66,19 @@ async def citizenship_input(message: Message, state: FSMContext, translation_loa
     data = await state.get_data()
     lang = data.get("language", "ru")
     translator = translation_loader.get_translator(lang)
-    matches = match_countries(message.text)
+    matches, suggestion = match_countries(message.text)
     if not matches:
-        await message.answer(translator.t("onboarding.citizenship_not_found"), reply_markup=cancel_keyboard(translator.t))
+        if suggestion:
+            await message.answer(
+                translator.t(
+                    "onboarding.citizenship_suggestion",
+                    query=message.text,
+                    suggestion=suggestion.display_name,
+                ),
+                reply_markup=countries_keyboard([suggestion]),
+            )
+        else:
+            await message.answer(translator.t("onboarding.citizenship_not_found"), reply_markup=cancel_keyboard(translator.t))
         return
     await state.update_data(countries=[c.code for c in matches])
     await message.answer(translator.t("onboarding.choose_from_list"), reply_markup=countries_keyboard(matches))
@@ -82,7 +92,7 @@ async def citizenship_selected(callback: CallbackQuery, state: FSMContext, trans
     translator = translation_loader.get_translator(lang)
     await state.update_data(citizenship=code)
     await state.set_state(OnboardingStates.phone)
-    await callback.message.edit_text(translator.t("onboarding.ask_phone"), reply_markup=contact_keyboard(translator.t))
+    await callback.message.answer(translator.t("onboarding.ask_phone"), reply_markup=contact_keyboard(translator.t))
 
 
 @router.message(F.contact, OnboardingStates.phone)

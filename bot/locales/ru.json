@@ -8,6 +8,7 @@
   "onboarding.choose_language": "Выберите язык интерфейса",
   "onboarding.enter_citizenship": "Введите гражданство (название или аббревиатура)",
   "onboarding.citizenship_not_found": "Страна не найдена, попробуйте ещё раз",
+  "onboarding.citizenship_suggestion": "Не нашёл страну \"{query}\", возможно вы имели в виду \"{suggestion}\"?",
   "onboarding.choose_from_list": "Выберите подходящую страну",
   "onboarding.ask_phone": "Отправьте российский номер телефона или введите его вручную",
   "onboarding.share_phone": "Поделиться номером",
