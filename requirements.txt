@@ -2,6 +2,7 @@ aiogram>=3.4
 SQLAlchemy>=2.0
 asyncpg
 python-dotenv
+pydantic
 APScheduler>=3.10
 pytz
 rapidfuzz

@@ -17,7 +17,15 @@ def language_keyboard(t) -> InlineKeyboardMarkup:
 def countries_keyboard(countries: list[Country]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for country in countries:
-        builder.button(text=country.code, callback_data=f"cit:{country.code}")
+        builder.button(text=country.display_name, callback_data=f"cit:{country.code}")
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def citizenship_confirm_keyboard(code: str, t) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t("actions.yes"), callback_data=f"cit-confirm:{code}")
+    builder.button(text=t("actions.no"), callback_data="cit-retry")
     builder.adjust(2)
     return builder.as_markup()
 
