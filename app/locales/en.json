@@ -1,0 +1,78 @@
+{
+  "start": {
+    "choose_language": "Choose your language",
+    "welcome": "Hi! I will help you track migration document deadlines.",
+    "ask_citizenship": "Type your citizenship (e.g., Kaz, Kazakhstan)",
+    "choose_from_list": "Please pick an option from the list:",
+    "confirm_citizenship": "Your citizenship: {country}. Confirm?",
+    "ask_phone": "Send a Russian phone number or share contact",
+    "ask_notifications_window": "When should we send reminders?",
+    "notification_window": "Notification window: {start}–{end}",
+    "ask_temp_registration": "Do you have temporary registration? (yes/no)",
+    "ask_temp_registration_date": "Enter registration expiry date (YYYY-MM-DD)",
+    "no_temp_registration_hint": "If you live in a dorm, visit office B103. In apartments register within 30 days of entry.",
+    "temp_registration_saved": "Registration date saved: {date}",
+    "share_contact": "Share contact"
+  },
+  "menu": {
+    "documents": "My documents",
+    "settings": "Settings",
+    "help": "Help",
+    "ready": "Main menu"
+  },
+  "buttons": {
+    "yes": "Yes",
+    "no": "No",
+    "on": "On",
+    "off": "Off",
+    "skip": "Skip"
+  },
+  "errors": {
+    "invalid_date": "Invalid date format",
+    "citizenship_not_found": "Citizenship not detected, try again",
+    "phone_not_ru": "Russian number required (+7...)",
+    "general": "Something went wrong. Please try later.",
+    "invalid_choice": "Please answer yes or no",
+    "too_many_requests": "Too many requests, try later",
+    "not_admin": "Not enough permissions",
+    "user_not_found": "User not found",
+    "invalid_id": "Provide numeric telegram_id"
+  },
+  "documents": {
+    "none": "No documents yet",
+    "item": "{doc_name}\nExpiry: {expiry}\nSubmitted for extension: {status}",
+    "ask_expiry": "Enter new expiry date",
+    "expiry_saved": "Expiry date saved",
+    "notifications_switched": "Notifications: {state}",
+    "submitted": "Marked as submitted for extension",
+    "extension": "{status}"
+  },
+  "notifications": {
+    "reminder": "Reminder: {doc_name} expires on {date} (in {days} days)",
+    "expired": "Document {doc_name} has expired!"
+  },
+  "status": {
+    "empty": "No document data",
+    "header": "Your documents:",
+    "item": "- {doc_name}: {expiry} | Notifications: {notif}"
+  },
+  "help": {
+    "text": "I notify about migration card, registration, and medical certificates. Use /documents to manage dates, /status for overview, /delete_me to erase data."
+  },
+  "delete": {
+    "confirm": "Delete all your data?",
+    "cancel": "Deletion cancelled",
+    "done": "Data removed"
+  },
+  "admin": {
+    "ask_user_id": "Reply with user's telegram_id to grant admin rights",
+    "added": "Admin granted",
+    "broadcast_prompt": "Send broadcast text",
+    "broadcast_confirm": "Send message to selected users? Type Yes/No",
+    "broadcast_cancel": "Broadcast cancelled",
+    "broadcast_done": "Broadcast finished. Sent: {sent}, failed: {failed}",
+    "stats_header": "Stats: users {users}, notifications on {active}",
+    "stats_languages": "By languages:",
+    "stats_citizenships": "By citizenships:"
+  }
+}
