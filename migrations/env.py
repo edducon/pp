@@ -1,6 +1,7 @@
+import os
 import asyncio
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config
+
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -13,12 +14,20 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# --- Берём URL из переменной окружения и прописываем в конфиг ---
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL env var is not set")
+
+# Это заменит ${DATABASE_URL} в alembic.ini на реальную строку
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# ----------------------------------------------------------------
+
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
+    """Запуск миграций в оффлайновом режиме (генерится SQL)."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -39,6 +48,7 @@ def do_run_migrations(connection):
 
 
 def run_migrations_online() -> None:
+    """Запуск миграций в онлайне (на живой БД)."""
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
