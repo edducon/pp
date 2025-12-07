@@ -21,9 +21,12 @@
   "onboarding.already_registered": "Вы уже зарегистрированы. Открываю меню.",
   "window.option": "Окно уведомлений: {window}",
   "menu.documents": "Мои документы",
+  "menu.settings": "Настройки",
+  "menu.help": "Справка",
   "menu.status": "Статус",
   "menu.language": "Сменить язык",
   "menu.delete": "Удалить данные",
+  "menu.settings_hint": "Сменить язык можно в настройках Telegram. Также доступна команда /language.",
   "documents.header": "Состояние документов:",
   "documents.status_missing": "не указано",
   "status.summary": "Гражданство: {citizenship}",
@@ -41,5 +44,6 @@
   "reminders.med_1": "Медицинская справка 1: осталось {days} дней.",
   "reminders.med_2": "Медицинская справка 2: осталось {days} дней.",
   "reminders.med_3": "Медицинская справка 3: осталось {days} дней.",
-  "reminders.visa": "Виза истекает через {days} дней."
+  "reminders.visa": "Виза истекает через {days} дней.",
+  "help.text": "Это справочный раздел. Используйте меню, чтобы управлять документами и настройками."
 }

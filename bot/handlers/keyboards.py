@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.services.citizenship import Country
@@ -55,11 +55,14 @@ def contact_keyboard(t) -> ReplyKeyboardMarkup:
     )
 
 
-def main_menu_keyboard(t) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text=t("menu.documents"), callback_data="menu:documents")
-    builder.button(text=t("menu.status"), callback_data="menu:status")
-    builder.button(text=t("menu.language"), callback_data="menu:language")
-    builder.button(text=t("menu.delete"), callback_data="menu:delete")
-    builder.adjust(2)
-    return builder.as_markup()
+def main_menu_keyboard(t) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=t("menu.documents")),
+                KeyboardButton(text=t("menu.settings")),
+            ],
+            [KeyboardButton(text=t("menu.help"))],
+        ],
+        resize_keyboard=True,
+    )

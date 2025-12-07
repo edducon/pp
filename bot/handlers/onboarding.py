@@ -174,4 +174,7 @@ async def window_selected(callback: CallbackQuery, state: FSMContext, translatio
         await session.commit()
 
     await state.clear()
-    await callback.message.edit_text(translator.t("onboarding.completed"), reply_markup=main_menu_keyboard(translator.t))
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer(
+        translator.t("onboarding.completed"), reply_markup=main_menu_keyboard(translator.t)
+    )

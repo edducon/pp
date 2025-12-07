@@ -21,9 +21,12 @@
   "onboarding.already_registered": "You are already registered. Opening menu.",
   "window.option": "Notification window: {window}",
   "menu.documents": "My documents",
+  "menu.settings": "Settings",
+  "menu.help": "Help",
   "menu.status": "Status",
   "menu.language": "Change language",
   "menu.delete": "Delete data",
+  "menu.settings_hint": "You can switch interface language in Telegram settings or via /language.",
   "documents.header": "Documents status:",
   "documents.status_missing": "not provided",
   "status.summary": "Citizenship: {citizenship}",
@@ -41,5 +44,6 @@
   "reminders.med_1": "Medical certificate 1 expires in {days} days.",
   "reminders.med_2": "Medical certificate 2 expires in {days} days.",
   "reminders.med_3": "Medical certificate 3 expires in {days} days.",
-  "reminders.visa": "Visa expires in {days} days."
+  "reminders.visa": "Visa expires in {days} days.",
+  "help.text": "This is the help section. Use the menu to manage documents and settings."
 }

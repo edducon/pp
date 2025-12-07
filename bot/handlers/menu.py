@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiogram import F, Router
+from aiogram.exceptions import SkipHandler
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
@@ -43,6 +44,33 @@ async def language_command(message: Message, t) -> None:
 @router.message(Command("delete_me"))
 async def delete_command(message: Message, t) -> None:
     await _delete_me(message.from_user.id, message, t)
+
+
+@router.message(Command("help"))
+async def help_command(message: Message, t) -> None:
+    await _show_help(message, t)
+
+
+@router.message()
+async def menu_text_handler(message: Message, t) -> None:
+    text = message.text or ""
+    actions = {
+        t("menu.documents"): lambda: _show_documents(message.from_user.id, message, t),
+        t("menu.settings"): lambda: _show_settings(message, t),
+        t("menu.help"): lambda: _show_help(message, t),
+    }
+    action = actions.get(text)
+    if not action:
+        raise SkipHandler()
+    await action()
+
+
+async def _show_settings(message: Message, t) -> None:
+    await message.answer(t("menu.settings_hint"), reply_markup=main_menu_keyboard(t))
+
+
+async def _show_help(message: Message, t) -> None:
+    await message.answer(t("help.text"), reply_markup=main_menu_keyboard(t))
 
 
 async def _show_documents(user_id: int, message: Message, t) -> None:
