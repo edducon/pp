@@ -12,7 +12,7 @@
     "notification_window": "Notification window: {start}–{end}",
     "ask_temp_registration": "Do you have temporary registration? (yes/no)",
     "ask_temp_registration_date": "Enter registration expiry date (YYYY-MM-DD)",
-    "temp_registration_autoset": "No registration found, set deadline to {date}. Please submit documents to office B103 to obtain it.",
+    "temp_registration_autoset": "No temporary registration yet. Submit documents to office B103 by {date} to obtain it.",
     "no_temp_registration_hint": "If you live in a dorm, visit office B103. In apartments register within 30 days of entry.",
     "temp_registration_saved": "Registration date saved: {date}",
     "ask_medical_exam": "Have you already passed the medical examination? (yes/no)",
@@ -27,7 +27,8 @@
     "documents": "My documents",
     "settings": "Settings",
     "help": "Help",
-    "ready": "Main menu"
+    "ready": "Main menu",
+    "settings_hint": "Settings: /language — change language. /status — document deadlines. /delete_me — delete your data."
   },
   "buttons": {
     "yes": "Yes",
