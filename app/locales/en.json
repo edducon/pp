@@ -1,0 +1,41 @@
+{
+  "start": {
+    "choose_language": "Choose your language",
+    "citizenship_prompt": "Please type your citizenship (e.g. Kazakh...)",
+    "confirm_citizenship": "Your citizenship: {country}. Confirm?",
+    "choose_from_list": "Pick an option from the list or try again",
+    "citizenship_retry": "Could not detect your citizenship, try again",
+    "ask_phone": "Send a Russian phone number or share your contact",
+    "ask_notification_window": "When should we send notifications?",
+    "notification_window": "Notification window: {start}–{end}",
+    "completed": "Setup finished. Here is the main menu"
+  },
+  "buttons": {
+    "share_phone": "Share contact",
+    "skip": "Skip"
+  },
+  "errors": {
+    "citizenship_not_found": "Could not detect citizenship, please type full name",
+    "non_russian_phone": "A Russian number starting with +7 is required",
+    "not_registered": "Please run /start first",
+    "too_many_requests": "Too many requests, try later"
+  },
+  "profile": {
+    "summary": "Citizenship: {citizenship}\nPhone: {phone}",
+    "not_set": "not set"
+  },
+  "documents": {
+    "empty": "No documents yet",
+    "item": "{name}: expires on {expiry}"
+  },
+  "notifications": {
+    "window": "Current notification window: {start}–{end}",
+    "reminder": "Reminder: {doc_name} expires in {days_left} days",
+    "expired": "Document {doc_name} has expired"
+  },
+  "admin": {
+    "enter_user_id": "Provide user's telegram_id",
+    "user_not_found": "User not found",
+    "added": "Admin rights granted"
+  }
+}
