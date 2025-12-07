@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.handlers.documents import list_documents
 from app.bot.handlers.start import language_keyboard
 from app.bot.keyboards.inline import yes_no_keyboard
 from app.bot.keyboards.reply import main_menu_keyboard
@@ -47,3 +48,18 @@ async def delete_confirm(callback: CallbackQuery, session: AsyncSession, t):
 @router.message(Command("menu"))
 async def show_menu(message: Message, t):
     await message.answer(t("menu.ready"), reply_markup=main_menu_keyboard(t))
+
+
+@router.message(lambda message, t: (message.text or "").strip().casefold() == t("menu.documents").casefold())
+async def menu_documents(message: Message, session: AsyncSession, t, language: str, translator):
+    await list_documents(message, session, t, language, translator)
+
+
+@router.message(lambda message, t: (message.text or "").strip().casefold() == t("menu.help").casefold())
+async def menu_help(message: Message, t):
+    await help_command(message, t)
+
+
+@router.message(lambda message, t: (message.text or "").strip().casefold() == t("menu.settings").casefold())
+async def menu_settings(message: Message, t):
+    await message.answer(t("menu.settings_hint"), reply_markup=main_menu_keyboard(t))
