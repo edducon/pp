@@ -10,17 +10,17 @@
     "migration_card_saved": "Migration card date saved: {date}",
     "ask_notifications_window": "When should we send reminders?",
     "notification_window": "Notification window: {start}–{end}",
-    "ask_temp_registration": "Do you have temporary registration? (yes/no)",
+    "ask_temp_registration": "Do you have temporary registration? Use buttons below.",
     "ask_temp_registration_date": "Enter registration expiry date (YYYY-MM-DD)",
-    "temp_registration_autoset": "No temporary registration yet. Submit documents to office B103 by {date} to obtain it.",
-    "no_temp_registration_hint": "If you live in a dorm, visit office B103. In apartments register within 30 days of entry.",
+    "temp_registration_autoset": "No registration yet. Submit documents to office B103 by {date} (within {days} days of entry).",
+    "no_temp_registration_hint": "If you live in a dorm, visit office B103. In apartments register within the allowed window after entry.",
     "temp_registration_saved": "Registration date saved: {date}",
-    "ask_medical_exam": "Have you already passed the medical examination? (yes/no)",
+    "ask_medical_exam": "Have you already passed the medical examination? Use buttons below.",
     "ask_med_cert_1_date": "Enter expiry of the first medical certificate (YYYY-MM-DD)",
     "ask_med_cert_2_date": "Enter expiry of the second medical certificate (YYYY-MM-DD)",
     "ask_med_cert_3_date": "Enter expiry of the third medical certificate (YYYY-MM-DD)",
     "med_cert_saved": "Medical certificate date saved: {date}",
-    "medical_exam_deadline": "You must complete the medical examination by {date}; you have 30 days after entering the country.",
+    "medical_exam_deadline": "Complete the medical examination by {date}; you have {days} days after entering the country.",
     "share_contact": "Share contact"
   },
   "menu": {
@@ -28,7 +28,8 @@
     "settings": "Settings",
     "help": "Help",
     "ready": "Main menu",
-    "settings_hint": "Settings: /language — change language. /status — document deadlines. /delete_me — delete your data."
+    "settings_hint": "Settings: /language — change language. /status — document deadlines. /delete_me — delete your data.",
+    "exit_check": "If you left Russia and returned, update your migration card so the deadlines refresh."
   },
   "buttons": {
     "yes": "Yes",
@@ -73,6 +74,10 @@
     "confirm": "Delete all your data?",
     "cancel": "Deletion cancelled",
     "done": "Data removed"
+  },
+  "alerts": {
+    "visit_b103": "Document deadlines are overdue. Please visit B103 urgently with your paperwork.",
+    "map": "Open map"
   },
   "admin": {
     "ask_user_id": "Reply with user's telegram_id to grant admin rights",

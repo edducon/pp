@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -9,8 +10,15 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.keyboards.inline import citizenship_options, confirm_keyboard, language_keyboard, notification_windows_keyboard
-from app.bot.keyboards.reply import contact_keyboard, main_menu_keyboard, remove_keyboard
+from app.bot.keyboards.inline import (
+    citizenship_options,
+    confirm_keyboard,
+    language_keyboard,
+    main_menu_keyboard,
+    notification_windows_keyboard,
+    yes_no_keyboard,
+)
+from app.bot.keyboards.reply import contact_keyboard, remove_keyboard
 from app.bot.services.document_service import ensure_user_documents, parse_time_window
 from app.bot.states.user_states import RegistrationStates
 from app.models.documents import DocumentType, UserDocument
@@ -19,12 +27,20 @@ from app.models.user import User
 router = Router()
 
 
+@dataclass
+class CountryRules:
+    registration_days: int
+    medical_days: int
+    migration_card_duration: int
+    visa_required: bool = False
+
+
 CITIZENSHIP_DATA = [
-    {"code": "KAZ", "names": ["казахстан", "kazakhstan", "kaz", "каз"]},
-    {"code": "KGZ", "names": ["kyrgyzstan", "киргизия", "кыргызстан", "kg", "kgz"]},
-    {"code": "UZB", "names": ["uzbekistan", "узбекистан", "uzb", "uz"]},
-    {"code": "ARM", "names": ["armenia", "армения", "arm", "armenia"]},
-    {"code": "TJK", "names": ["tajikistan", "таджикистан", "tjk", "tj"]},
+    {"code": "KAZ", "names": ["казахстан", "kazakhstan", "kaz", "каз"], "eaeu": True},
+    {"code": "KGZ", "names": ["kyrgyzstan", "киргизия", "кыргызстан", "kg", "kgz"], "eaeu": True},
+    {"code": "UZB", "names": ["uzbekistan", "узбекистан", "uzb", "uz"], "eaeu": True},
+    {"code": "ARM", "names": ["armenia", "армения", "arm", "armenia"], "eaeu": True},
+    {"code": "TJK", "names": ["tajikistan", "таджикистан", "tjk", "tj"], "eaeu": True},
 ]
 
 NOTIFICATION_WINDOWS = [
@@ -66,6 +82,32 @@ def search_citizenship(query: str) -> list[tuple[str, str]]:
                 matches.append((item["code"], item["names"][0].capitalize()))
                 break
     return matches
+
+
+def is_eaeu(code: str | None) -> bool:
+    if not code:
+        return False
+    return any(item["code"] == code and item.get("eaeu") for item in CITIZENSHIP_DATA)
+
+
+def country_rules(settings, citizenship_code: str | None) -> CountryRules:
+    if is_eaeu(citizenship_code):
+        return CountryRules(
+            settings.eaeu_registration_days,
+            settings.eaeu_medical_days,
+            settings.default_migration_card_duration_days,
+            False,
+        )
+    return CountryRules(
+        settings.non_eaeu_registration_days,
+        settings.non_eaeu_medical_days,
+        settings.default_migration_card_duration_days,
+        True,
+    )
+
+
+def estimate_entry_date(migration_expiry, rules: CountryRules) -> datetime.date:
+    return migration_expiry - timedelta(days=rules.migration_card_duration)
 
 
 def parse_date_by_language(value: str, language: str) -> datetime.date:
@@ -229,7 +271,10 @@ async def save_migration_card_expiry(
 
     await state.set_state(RegistrationStates.ask_temp_registration)
     await message.answer(t("start.migration_card_saved", date=translator.format_date(expiry, language)))
-    await message.answer(t("start.ask_temp_registration"))
+    await message.answer(
+        t("start.ask_temp_registration"),
+        reply_markup=yes_no_keyboard("tempreg:yes", "tempreg:no"),
+    )
 
 
 @router.callback_query(F.data.startswith("notify:"))
@@ -253,43 +298,51 @@ async def notification_window_selected(callback: CallbackQuery, state: FSMContex
     await state.clear()
 
 
-@router.message(RegistrationStates.ask_temp_registration)
-async def temp_registration_answer(message: Message, state: FSMContext, session: AsyncSession, t, language: str, translator):
-    text = (message.text or "").lower()
-    result = await session.execute(select(User).where(User.telegram_id == message.from_user.id))
+@router.callback_query(RegistrationStates.ask_temp_registration, F.data.startswith("tempreg:"))
+async def temp_registration_answer(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession, t, language: str, translator
+):
+    answer = callback.data.split(":", 1)[1]
+    result = await session.execute(select(User).where(User.telegram_id == callback.from_user.id))
     user = result.scalar_one_or_none()
     if not user:
-        await message.answer(t("errors.general"))
+        await callback.message.answer(t("errors.general"))
         return
 
-    if "да" in text or "yes" in text:
+    if answer == "yes":
         await state.set_state(RegistrationStates.ask_temp_registration_date)
-        await message.answer(t("start.ask_temp_registration_date"))
+        await callback.message.edit_text(t("start.ask_temp_registration_date"))
+        await callback.answer()
         return
 
-    if "нет" in text or "no" in text:
-        migration_card = await get_user_document_by_code(session, user, "MIGRATION_CARD")
-        if not migration_card or not migration_card.current_expiry_date:
-            await message.answer(t("errors.general"))
-            return
+    migration_card = await get_user_document_by_code(session, user, "MIGRATION_CARD")
+    if not migration_card or not migration_card.current_expiry_date:
+        await callback.message.answer(t("errors.general"))
+        return
 
-        temp_registration_doc = await get_user_document_by_code(session, user, "TEMP_REGISTRATION")
-        if not temp_registration_doc:
-            await message.answer(t("errors.general"))
-            return
+    temp_registration_doc = await get_user_document_by_code(session, user, "TEMP_REGISTRATION")
+    if not temp_registration_doc:
+        await callback.message.answer(t("errors.general"))
+        return
 
-        auto_expiry = migration_card.current_expiry_date - timedelta(days=7)
-        temp_registration_doc.current_expiry_date = auto_expiry
-        await session.commit()
+    rules = country_rules(callback.bot.settings, user.citizenship_code)
+    entry_date = estimate_entry_date(migration_card.current_expiry_date, rules)
+    auto_expiry = entry_date + timedelta(days=rules.registration_days)
+    temp_registration_doc.current_expiry_date = auto_expiry
+    await session.commit()
 
-        await state.set_state(RegistrationStates.ask_medical_exam)
-        await message.answer(
-            t("start.temp_registration_autoset", date=translator.format_date(auto_expiry, language))
+    await state.set_state(RegistrationStates.ask_medical_exam)
+    await callback.message.edit_text(
+        t(
+            "start.temp_registration_autoset",
+            date=translator.format_date(auto_expiry, language),
+            days=rules.registration_days,
         )
-        await message.answer(t("start.ask_medical_exam"))
-        return
-
-    await message.answer(t("errors.invalid_choice"))
+    )
+    await callback.message.answer(
+        t("start.ask_medical_exam"), reply_markup=yes_no_keyboard("medexam:yes", "medexam:no")
+    )
+    await callback.answer()
 
 
 @router.message(RegistrationStates.ask_temp_registration_date)
@@ -316,45 +369,61 @@ async def temp_registration_date(message: Message, state: FSMContext, session: A
         await session.commit()
     await message.answer(t("start.temp_registration_saved", date=translator.format_date(expiry, language)))
     await state.set_state(RegistrationStates.ask_medical_exam)
-    await message.answer(t("start.ask_medical_exam"))
+    await message.answer(t("start.ask_medical_exam"), reply_markup=yes_no_keyboard("medexam:yes", "medexam:no"))
+
+
+@router.message(RegistrationStates.ask_temp_registration)
+async def temp_registration_buttons_hint(message: Message, t):
+    await message.answer(t("errors.invalid_choice"), reply_markup=yes_no_keyboard("tempreg:yes", "tempreg:no"))
+
+
+@router.callback_query(RegistrationStates.ask_medical_exam, F.data.startswith("medexam:"))
+async def medical_exam_answer(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession, t, language: str, translator
+):
+    answer = callback.data.split(":", 1)[1]
+    result = await session.execute(select(User).where(User.telegram_id == callback.from_user.id))
+    user = result.scalar_one_or_none()
+    if not user:
+        await callback.message.answer(t("errors.general"))
+        return
+
+    if answer == "yes":
+        await state.set_state(RegistrationStates.ask_med_cert_1_date)
+        await callback.message.edit_text(t("start.ask_med_cert_1_date"))
+        await callback.answer()
+        return
+
+    migration_card = await get_user_document_by_code(session, user, "MIGRATION_CARD")
+    if not migration_card or not migration_card.current_expiry_date:
+        await callback.message.answer(t("errors.general"))
+        return
+
+    rules = country_rules(callback.bot.settings, user.citizenship_code)
+    entry_date = estimate_entry_date(migration_card.current_expiry_date, rules)
+    deadline = entry_date + timedelta(days=rules.medical_days)
+    med_codes = ["MED_CERT_1", "MED_CERT_2", "MED_CERT_3"]
+    for code in med_codes:
+        doc = await get_user_document_by_code(session, user, code)
+        if doc:
+            doc.current_expiry_date = deadline
+    await session.commit()
+
+    await callback.message.edit_text(
+        t(
+            "start.medical_exam_deadline",
+            date=translator.format_date(deadline, language),
+            days=rules.medical_days,
+        )
+    )
+    await state.set_state(RegistrationStates.choose_notification_window)
+    await prompt_notification_window(callback.message, t)
+    await callback.answer()
 
 
 @router.message(RegistrationStates.ask_medical_exam)
-async def medical_exam_answer(message: Message, state: FSMContext, session: AsyncSession, t, language: str, translator):
-    text = (message.text or "").lower()
-    result = await session.execute(select(User).where(User.telegram_id == message.from_user.id))
-    user = result.scalar_one_or_none()
-    if not user:
-        await message.answer(t("errors.general"))
-        return
-
-    if "да" in text or "yes" in text:
-        await state.set_state(RegistrationStates.ask_med_cert_1_date)
-        await message.answer(t("start.ask_med_cert_1_date"))
-        return
-
-    if "нет" in text or "no" in text:
-        migration_card = await get_user_document_by_code(session, user, "MIGRATION_CARD")
-        if not migration_card or not migration_card.current_expiry_date:
-            await message.answer(t("errors.general"))
-            return
-
-        deadline = migration_card.current_expiry_date - timedelta(days=14)
-        med_codes = ["MED_CERT_1", "MED_CERT_2", "MED_CERT_3"]
-        for code in med_codes:
-            doc = await get_user_document_by_code(session, user, code)
-            if doc:
-                doc.current_expiry_date = deadline
-        await session.commit()
-
-        await message.answer(
-            t("start.medical_exam_deadline", date=translator.format_date(deadline, language))
-        )
-        await state.set_state(RegistrationStates.choose_notification_window)
-        await prompt_notification_window(message, t)
-        return
-
-    await message.answer(t("errors.invalid_choice"))
+async def medical_exam_buttons_hint(message: Message, t):
+    await message.answer(t("errors.invalid_choice"), reply_markup=yes_no_keyboard("medexam:yes", "medexam:no"))
 
 
 async def _save_med_cert_date(

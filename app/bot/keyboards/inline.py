@@ -48,3 +48,19 @@ def document_actions_keyboard(doc_id: int) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="🔕", callback_data=f"doc:toggle:{doc_id}")],
         ]
     )
+
+
+def main_menu_keyboard(t) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t("menu.documents"), callback_data="menu:documents")],
+            [InlineKeyboardButton(text=t("menu.settings"), callback_data="menu:settings"),
+             InlineKeyboardButton(text=t("menu.help"), callback_data="menu:help")],
+        ]
+    )
+
+
+def menu_back_keyboard(target: str = "menu:root") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="⬅️", callback_data=target)]]
+    )
