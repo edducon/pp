@@ -81,7 +81,7 @@ async def broadcast_confirm(message: Message, state: FSMContext, t, bot):
         await state.clear()
         return
     data = await state.get_data()
-    sessionmaker = bot["sessionmaker"]
+    sessionmaker = getattr(bot, "sessionmaker", None)
     service = BroadcastService(bot, sessionmaker=sessionmaker)
     sent, failed = await service.send_broadcast(data.get("text", ""))
     await message.answer(t("admin.broadcast_done", sent=sent, failed=failed))
