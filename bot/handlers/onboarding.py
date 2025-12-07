@@ -11,8 +11,8 @@ from aiogram.types import CallbackQuery, Message
 from bot.db import get_session
 from bot.handlers.keyboards import (
     cancel_keyboard,
+    citizenship_confirm_keyboard,
     contact_keyboard,
-    countries_keyboard,
     language_keyboard,
     main_menu_keyboard,
     notification_window_keyboard,
@@ -66,23 +66,50 @@ async def citizenship_input(message: Message, state: FSMContext, translation_loa
     data = await state.get_data()
     lang = data.get("language", "ru")
     translator = translation_loader.get_translator(lang)
-    matches = match_countries(message.text)
-    if not matches:
-        await message.answer(translator.t("onboarding.citizenship_not_found"), reply_markup=cancel_keyboard(translator.t))
+    country, suggestion, _ = match_countries(message.text)
+
+    if country:
+        await state.update_data(pending_citizenship=country.code)
+        await message.answer(
+            translator.t("onboarding.citizenship_confirm", country=country.display_name),
+            reply_markup=citizenship_confirm_keyboard(country.code, translator.t),
+        )
         return
-    await state.update_data(countries=[c.code for c in matches])
-    await message.answer(translator.t("onboarding.choose_from_list"), reply_markup=countries_keyboard(matches))
+
+    if suggestion:
+        await state.update_data(pending_citizenship=suggestion.code)
+        await message.answer(
+            translator.t(
+                "onboarding.citizenship_suggestion",
+                query=message.text,
+                suggestion=suggestion.display_name,
+            ),
+            reply_markup=citizenship_confirm_keyboard(suggestion.code, translator.t),
+        )
+        return
+
+    await state.update_data(pending_citizenship=None)
+    await message.answer(translator.t("onboarding.citizenship_not_found"), reply_markup=cancel_keyboard(translator.t))
 
 
-@router.callback_query(F.data.startswith("cit:"), OnboardingStates.citizenship)
-async def citizenship_selected(callback: CallbackQuery, state: FSMContext, translation_loader: TranslationLoader) -> None:
-    code = callback.data.split(":")[1]
+@router.callback_query(F.data.startswith("cit-confirm:"), OnboardingStates.citizenship)
+async def citizenship_confirmed(callback: CallbackQuery, state: FSMContext, translation_loader: TranslationLoader) -> None:
+    code = callback.data.split(":", 1)[1]
     data = await state.get_data()
     lang = data.get("language", "ru")
     translator = translation_loader.get_translator(lang)
-    await state.update_data(citizenship=code)
+    await state.update_data(citizenship=code, pending_citizenship=None)
     await state.set_state(OnboardingStates.phone)
-    await callback.message.edit_text(translator.t("onboarding.ask_phone"), reply_markup=contact_keyboard(translator.t))
+    await callback.message.answer(translator.t("onboarding.ask_phone"), reply_markup=contact_keyboard(translator.t))
+
+
+@router.callback_query(F.data == "cit-retry", OnboardingStates.citizenship)
+async def citizenship_retry(callback: CallbackQuery, state: FSMContext, translation_loader: TranslationLoader) -> None:
+    data = await state.get_data()
+    lang = data.get("language", "ru")
+    translator = translation_loader.get_translator(lang)
+    await state.update_data(pending_citizenship=None)
+    await callback.message.edit_text(translator.t("onboarding.enter_citizenship"))
 
 
 @router.message(F.contact, OnboardingStates.phone)
@@ -122,8 +149,13 @@ async def window_selected(callback: CallbackQuery, state: FSMContext, translatio
     data = await state.get_data()
     lang = data.get("language", "ru")
     translator = translation_loader.get_translator(lang)
-    window_value = callback.data.split(":")[1]
-    start, end = parse_window(window_value)
+    window_value = callback.data.split(":", 1)[1]
+    try:
+        start, end = parse_window(window_value)
+    except ValueError:
+        await callback.answer(translator.t("onboarding.time_window_invalid"), show_alert=True)
+        await callback.message.edit_reply_markup(reply_markup=notification_window_keyboard(translator.t))
+        return
     await state.update_data(notification_window_start=start, notification_window_end=end)
 
     async with get_session() as session:
@@ -142,4 +174,7 @@ async def window_selected(callback: CallbackQuery, state: FSMContext, translatio
         await session.commit()
 
     await state.clear()
-    await callback.message.edit_text(translator.t("onboarding.completed"), reply_markup=main_menu_keyboard(translator.t))
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer(
+        translator.t("onboarding.completed"), reply_markup=main_menu_keyboard(translator.t)
+    )
