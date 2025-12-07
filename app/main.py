@@ -32,8 +32,8 @@ async def main() -> None:
         await ensure_document_types(session)
 
     bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode="HTML"))
-    bot["sessionmaker"] = sessionmaker
-    bot["settings"] = settings
+    bot.sessionmaker = sessionmaker
+    bot.settings = settings
 
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
