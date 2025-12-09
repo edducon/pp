@@ -1,81 +1,59 @@
-# Migration Reminder Bot
+# Migration Card Reminder Bot
 
-Асинхронный Telegram-бот на aiogram 3.x, который напоминает иностранным гражданам о сроках миграционной карты, временной регистрации, медицинских сертификатов и визы.
+Новая версия асинхронного Telegram-бота на **aiogram 3.x** с модульной архитектурой, автоматическими напоминаниями о сроках миграционной карты и расширяемой локализацией.
+
+## Возможности
+- Регистрация пользователя с выбором языка (RU/EN), ФИО, гражданства, телефоном и датой окончания миграционной карты.
+- Фаззис-поиск гражданства по названию, коду или алиасам (rapidfuzz) с нормализованным справочником стран в базе данных.
+- Автонапоминания за 30 дней до окончания миграционной карты и далее еженедельно с кнопкой «Отдал на продление» для паузы уведомлений.
+- Проверка выезда из РФ после продления: бот задает вопрос и сохраняет ответы в истории.
+- Администраторы (назначаются супер-админом) могут:
+  - рассылать уведомления по диапазону дат окончания карт;
+  - просматривать пользователей с пагинацией и отмечать продление, отправляя уведомление клиенту.
+- Легко добавить новые языки через JSON-файлы в `app/locales/`.
 
 ## Структура проекта
 ```
 app/
-  main.py
-  config.py
-  logging_config.py
+  main.py                # точка входа: инициализация бота, БД, планировщика, локализации
+  config.py              # Pydantic-настройки
+  database.py            # инициализация Async SQLAlchemy
+  enums.py               # статусы миграционных карт и событий
+  models.py              # модели SQLAlchemy (пользователи, админы, карты, история)
+  logging.py             # базовая настройка логирования
+  data/countries.json    # справочник стран с алиасами
+  locales/*.json         # переводы сообщений
+  services/
+    localization.py      # загрузка и форматирование локализованных строк
+    countries.py         # синхронизация и поиск гражданств
+    migration_cards.py   # бизнес-логика работы с миграционными картами
+    notifier.py          # APScheduler-уведомления
   bot/
-    handlers/
-      start.py
-      profile.py
-      documents.py
-      notifications.py
-      admin.py
-    middlewares/
-      user_locale.py
-      db_session.py
-      throttling.py
-    keyboards/
-      inline.py
-      reply.py
-    states/
-      user_states.py
-    services/
-      notifications_service.py
-      broadcast_service.py
-      document_service.py
-    i18n/
-      loader.py
-  models/
-    base.py
-    user.py
-    documents.py
-    __init__.py
-  locales/
-    ru.json
-    en.json
-migrations/
-  env.py
-  versions/
-    0001_initial.py
+    handlers/            # хендлеры aiogram (пользователи, админы)
+    keyboards/           # inline/reply клавиатуры
+    middlewares/         # middleware для сессии БД и языка
+    states.py            # FSM состояния
 requirements.txt
-alembic.ini
-.env.example
-Dockerfile
 ```
 
-## Установка зависимостей
+## Подготовка окружения
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-
-## Подготовка окружения
-Скопируйте `.env.example` в `.env` и заполните значения (токен бота, строка подключения к БД, ID супер-админа и т.д.).
-
-## PostgreSQL через docker-compose
-```bash
-docker-compose up -d db
+Создайте файл `.env` со значениями (база данных должна быть PostgreSQL):
+```
+BOT_TOKEN=123456:token
+BOT_SUPERADMIN_ID=123456789
+BOT_DATABASE__URL=postgresql+asyncpg://admin:qwerty12345@localhost:5432/botdb1
+BOT_TIMEZONE=Europe/Moscow
 ```
 
-## Миграции Alembic
+## Запуск
 ```bash
 alembic upgrade head
-```
-
-## Запуск бота локально
-```bash
 python -m app.main
 ```
 
-## Развёртывание
-1. Настройте переменные окружения на сервере (можно использовать `.env`).
-2. Установите зависимости в изолированном окружении.
-3. Примените миграции Alembic к продакшен-базе данных.
-4. Запустите процесс бота (systemd/pm2/supervisor) командой `python -m app.main`.
-5. Убедитесь, что каталог для логов доступен и ротация файлов включена.
+Схема базы данных поднимается миграциями Alembic (используется PostgreSQL), затем при старте синхронизируется справочник стран из `app/data/countries.json`.
