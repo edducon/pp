@@ -1,36 +1,42 @@
-import os
 import asyncio
+import os
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from alembic import context
-from app.models.base import Base
-from app.models import user, documents  # noqa: F401
+from app import models  # noqa: F401
+from app.models import Base
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# --- Берём URL из переменной окружения и прописываем в конфиг ---
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL env var is not set")
 
-# Это заменит ${DATABASE_URL} в alembic.ini на реальную строку
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
-# ----------------------------------------------------------------
+def _configure_url() -> str:
+    url = config.get_main_option("sqlalchemy.url")
+    placeholder = "${DATABASE_URL}"
+    if url and url != placeholder:
+        return url
 
+    env_url = os.getenv("DATABASE_URL") or os.getenv("BOT_DATABASE__URL")
+    if not env_url:
+        raise RuntimeError("DATABASE_URL or BOT_DATABASE__URL env var is not set")
+
+    config.set_main_option("sqlalchemy.url", env_url)
+    return env_url
+
+
+DATABASE_URL = _configure_url()
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     """Запуск миграций в оффлайновом режиме (генерится SQL)."""
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
