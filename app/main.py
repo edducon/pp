@@ -46,6 +46,7 @@ async def main() -> None:
     dp.include_router(user.router)
     dp.include_router(admin.router)
 
+    # Планировщик
     scheduler = AsyncIOScheduler(timezone=settings.timezone)
     notifier = Notifier(scheduler, database.session_factory, bot, translator)
     notifier.start()
