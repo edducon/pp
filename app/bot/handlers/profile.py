@@ -65,6 +65,24 @@ async def help_command(message: Message, t):
     await message.answer(t("help.text"))
 
 
+@router.message(Command("country"))
+async def country_lookup(message: Message, t):
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer(t("country.prompt"))
+        return
+    query = parts[1]
+    matches = search_countries(query)
+    if not matches:
+        await message.answer(t("country.not_found"))
+        return
+    code, name = matches[0]
+    country = get_country(code)
+    visa = t("country.visa_required") if country and country.get("visa_required") else t("country.no_visa")
+    bloc = t("country.eaeu") if country and country.get("is_eaeu") else t("country.non_eaeu")
+    await message.answer(t("country.info", name=name, code=code, bloc=bloc, visa=visa))
+
+
 @router.message(Command("delete_me"))
 async def delete_me(message: Message, t):
     await message.answer(t("delete.confirm"), reply_markup=yes_no_keyboard("delete:yes", "delete:no"))
