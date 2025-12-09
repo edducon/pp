@@ -19,8 +19,16 @@ depends_on = None
 def upgrade() -> None:
     # Ensure enums are recreated with the expected lowercase values even if a stale type
     # was left behind from earlier iterations of the project.
-    migration_card_status = sa.Enum(MigrationCardStatus, name='migrationcardstatus')
-    migration_event = sa.Enum(MigrationEvent, name='migrationevent')
+    migration_card_status = sa.Enum(
+        MigrationCardStatus,
+        name='migrationcardstatus',
+        create_type=False,
+    )
+    migration_event = sa.Enum(
+        MigrationEvent,
+        name='migrationevent',
+        create_type=False,
+    )
 
     op.execute("DROP TYPE IF EXISTS migrationcardstatus CASCADE")
     op.execute("DROP TYPE IF EXISTS migrationevent CASCADE")
