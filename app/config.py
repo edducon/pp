@@ -1,21 +1,28 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DatabaseSettings(BaseModel):
-    url: str = Field(..., description="SQLAlchemy async database URL")
+    # URL для SQLAlchemy async-движка
+    url: str
 
 
 class BotSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__", env_prefix="BOT_", extra="ignore")
+    # Имена полей → что ты реально используешь в коде (settings.token и т.д.)
+    token: str
+    superadmin_id: int
+    timezone: str = "Europe/Moscow"
+    database: DatabaseSettings
 
-    token: str = Field(..., alias="TOKEN", description="Telegram bot token")
-    superadmin_id: int = Field(..., alias="SUPERADMIN_ID", description="Telegram user ID of the super administrator")
-    timezone: str = Field("Europe/Moscow", alias="TIMEZONE", description="Default timezone for schedulers")
-    database: DatabaseSettings = DatabaseSettings(
-        url="postgresql+asyncpg://admin:qwerty12345@localhost:5432/botdb1"
+    # Настройки чтения из .env
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_prefix="BOT_",          # BOT_TOKEN, BOT_SUPERADMIN_ID, BOT_TIMEZONE, BOT_DATABASE__URL
+        env_nested_delimiter="__",  # BOT_DATABASE__URL → database.url
+        extra="ignore",             # лишние переменные в .env игнорируются
     )
 
 

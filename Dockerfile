@@ -17,4 +17,4 @@ COPY . .
 
 # по умолчанию запускаем бота;
 # docker-compose поверх этого всё равно задаёт свою command
-CMD ["python", "main.py"]
+CMD ["python", "-m", "main.py"]
