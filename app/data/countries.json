@@ -1,0 +1,7 @@
+[
+  {"code3": "RUS", "name_ru": "Россия", "name_en": "Russia", "aliases": ["RU", "Russian Federation"]},
+  {"code3": "KAZ", "name_ru": "Казахстан", "name_en": "Kazakhstan", "aliases": ["KZ", "Kaz", "РК", "Republic of Kazakhstan"]},
+  {"code3": "UZB", "name_ru": "Узбекистан", "name_en": "Uzbekistan", "aliases": ["UZ", "Узб"]},
+  {"code3": "KGZ", "name_ru": "Киргизия", "name_en": "Kyrgyzstan", "aliases": ["KG", "Кыргызстан"]},
+  {"code3": "UKR", "name_ru": "Украина", "name_en": "Ukraine", "aliases": ["UA", "Ukr"]}
+]
