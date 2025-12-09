@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     scheduler_interval_minutes: int = Field(60, alias="SCHEDULER_INTERVAL_MINUTES")
     default_notification_start: str = Field("09:00", alias="DEFAULT_NOTIFY_START")
     default_notification_end: str = Field("22:00", alias="DEFAULT_NOTIFY_END")
+    default_migration_card_duration_days: int = Field(60, alias="DEFAULT_MIGRATION_CARD_DURATION_DAYS")
+    eaeu_registration_days: int = Field(30, alias="EAEU_REGISTRATION_DAYS")
+    eaeu_medical_days: int = Field(30, alias="EAEU_MEDICAL_DAYS")
+    non_eaeu_registration_days: int = Field(10, alias="NON_EAEU_REGISTRATION_DAYS")
+    non_eaeu_medical_days: int = Field(30, alias="NON_EAEU_MEDICAL_DAYS")
+    visa_renewal_notice_days: int = Field(45, alias="VISA_RENEWAL_NOTICE_DAYS")
 
 
 def load_settings() -> Settings:
