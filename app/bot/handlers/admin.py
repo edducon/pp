@@ -1,228 +1,153 @@
-from datetime import date, datetime
+from __future__ import annotations
 
-from aiogram import F, Router
+import datetime as dt
+
+from aiogram import Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
-from sqlalchemy import func, select
+from aiogram.types import CallbackQuery, Message
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.keyboards.inline import yes_no_keyboard
-from app.bot.services.broadcast_service import BroadcastService
-from app.bot.states.user_states import AdminStates
-from app.config import load_settings
-from app.models.documents import UserDocument
-from app.models.user import User
+from app.bot.keyboards.admin import admin_profile_keyboard, admin_user_list_keyboard
+from app.bot.keyboards.common import travel_keyboard
+from app.bot.states import AdminBroadcastState
+from app.models import Admin, MigrationCard, User
+from app.services.migration_cards import MigrationCardService
 
-settings = load_settings()
 router = Router()
 
 
-REMINDER_DOCS = {
-    "MIGRATION_CARD": "admin.doc_migration",
-    "TEMP_REGISTRATION": "admin.doc_temp_registration",
-    "VISA": "admin.doc_visa",
-}
-
-
-def reminder_doc_keyboard(t) -> InlineKeyboardMarkup:
-    buttons = [
-        [InlineKeyboardButton(text=t(label), callback_data=f"remdoc:{code}")] for code, label in REMINDER_DOCS.items()
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-
-def reminder_operator_keyboard(t) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="≥", callback_data="remop:gte"), InlineKeyboardButton(text="≤", callback_data="remop:lte")],
-            [InlineKeyboardButton(text=t("buttons.skip"), callback_data="remop:all")],
-        ]
-    )
-
-
-def is_admin(user: User | None) -> bool:
-    if user is None:
-        return False
-    return user.is_admin or user.telegram_id == settings.superadmin_id
-
-
-def parse_filter_date(text: str) -> date | None:
-    raw = text.strip()
-    for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
-        try:
-            return datetime.strptime(raw, fmt).date()
-        except ValueError:
-            continue
-    return None
+async def _is_admin(user_id: int, session: AsyncSession, superadmin_id: int) -> bool:
+    if user_id == superadmin_id:
+        return True
+    stmt = select(Admin).join(User).where(User.telegram_id == user_id)
+    return await session.scalar(stmt) is not None
 
 
 @router.message(Command("add_admin"))
-async def add_admin(message: Message, session: AsyncSession, state: FSMContext, t):
-    requester = (await session.execute(select(User).where(User.telegram_id == message.from_user.id))).scalar_one_or_none()
-    if not is_admin(requester):
-        await message.answer(t("errors.not_admin"))
+async def add_admin(message: Message, session: AsyncSession, t, locale, settings):
+    if message.from_user.id != settings.superadmin_id:
+        await message.answer(t("admin.access_denied", locale))
         return
-    if message.reply_to_message and message.reply_to_message.from_user:
-        target_id = message.reply_to_message.from_user.id
-        await _set_admin(session, target_id, message, t)
-        return
-    await state.set_state(AdminStates.add_admin)
-    await message.answer(t("admin.ask_user_id"))
-
-
-@router.message(AdminStates.add_admin)
-async def add_admin_by_id(message: Message, session: AsyncSession, state: FSMContext, t):
     try:
-        target_id = int(message.text.strip())
+        target_id = int(message.text.split(maxsplit=1)[1])
     except Exception:
-        await message.answer(t("errors.invalid_id"))
+        await message.answer("Usage: /add_admin <telegram_id>")
         return
-    await _set_admin(session, target_id, message, t)
-    await state.clear()
-
-
-async def _set_admin(session: AsyncSession, target_id: int, message: Message, t):
-    user = (await session.execute(select(User).where(User.telegram_id == target_id))).scalar_one_or_none()
+    user = await session.scalar(select(User).where(User.telegram_id == target_id))
     if not user:
-        await message.answer(t("errors.user_not_found"))
+        await message.answer("User not registered")
         return
-    user.is_admin = True
+    session.add(Admin(user_id=user.id, granted_by=message.from_user.id))
     await session.commit()
-    await message.answer(t("admin.added"))
+    await message.answer(t("admin.added", locale))
 
 
-@router.message(Command("broadcast"))
-async def broadcast(message: Message, session: AsyncSession, state: FSMContext, t, bot):
-    requester = (await session.execute(select(User).where(User.telegram_id == message.from_user.id))).scalar_one_or_none()
-    if not is_admin(requester):
-        await message.answer(t("errors.not_admin"))
+@router.message(Command("notify"))
+async def admin_notify(message: Message, state: FSMContext, session: AsyncSession, t, locale, settings):
+    if not await _is_admin(message.from_user.id, session, settings.superadmin_id):
+        await message.answer(t("admin.access_denied", locale))
         return
-    await state.set_state(AdminStates.broadcast_text)
-    await message.answer(t("admin.broadcast_prompt"))
+    await state.set_state(AdminBroadcastState.waiting_for_dates)
+    await message.answer(t("admin.broadcast_dates", locale))
 
 
-@router.message(AdminStates.broadcast_text)
-async def broadcast_text(message: Message, state: FSMContext, t):
-    text = message.text or ""
-    await state.set_state(AdminStates.broadcast_confirm)
-    await state.update_data(text=text)
-    await message.answer(t("admin.broadcast_confirm"))
-
-
-@router.message(AdminStates.broadcast_confirm)
-async def broadcast_confirm(message: Message, state: FSMContext, t, bot):
-    if message.text.lower() not in {t("buttons.yes").lower(), "yes", "да"}:
-        await message.answer(t("admin.broadcast_cancel"))
-        await state.clear()
+@router.message(AdminBroadcastState.waiting_for_dates)
+async def notify_dates(message: Message, state: FSMContext, t, locale):
+    try:
+        date_from_str, date_to_str = message.text.split("-")
+        date_from = dt.datetime.strptime(date_from_str.strip(), "%d.%m.%Y").date()
+        date_to = dt.datetime.strptime(date_to_str.strip(), "%d.%m.%Y").date()
+    except Exception:
+        await message.answer(t("admin.broadcast_dates", locale))
         return
+    await state.update_data(date_from=date_from, date_to=date_to)
+    await state.set_state(AdminBroadcastState.waiting_for_message)
+    await message.answer(t("admin.broadcast_message", locale))
+
+
+@router.message(AdminBroadcastState.waiting_for_message)
+async def notify_message(message: Message, state: FSMContext, session: AsyncSession, t, locale):
     data = await state.get_data()
-    sessionmaker = getattr(bot, "sessionmaker", None)
-    service = BroadcastService(bot, sessionmaker=sessionmaker)
-    sent, failed = await service.send_broadcast(data.get("text", ""))
-    await message.answer(t("admin.broadcast_done", sent=sent, failed=failed))
-    await state.clear()
-
-
-@router.message(Command("remind_docs"))
-async def remind_docs(message: Message, session: AsyncSession, state: FSMContext, t):
-    requester = (await session.execute(select(User).where(User.telegram_id == message.from_user.id))).scalar_one_or_none()
-    if not is_admin(requester):
-        await message.answer(t("errors.not_admin"))
-        return
-    await state.set_state(AdminStates.reminder_doc_type)
-    await message.answer(t("admin.reminder_choose_doc"), reply_markup=reminder_doc_keyboard(t))
-
-
-@router.callback_query(AdminStates.reminder_doc_type, F.data.startswith("remdoc:"))
-async def reminder_doc_selected(callback: CallbackQuery, state: FSMContext, t):
-    code = callback.data.split(":", 1)[1]
-    await state.update_data(rem_doc=code)
-    await state.set_state(AdminStates.reminder_operator)
-    await callback.message.edit_text(t("admin.reminder_choose_operator"), reply_markup=reminder_operator_keyboard(t))
-    await callback.answer()
-
-
-@router.callback_query(AdminStates.reminder_operator, F.data.startswith("remop:"))
-async def reminder_operator(callback: CallbackQuery, state: FSMContext, t):
-    op = callback.data.split(":", 1)[1]
-    await callback.message.edit_reply_markup()
-    if op == "all":
-        await state.update_data(rem_op=None, rem_date=None)
-        await state.set_state(AdminStates.reminder_text)
-        await callback.message.answer(t("admin.reminder_enter_text"))
-        await callback.answer()
-        return
-    await state.update_data(rem_op=op)
-    await state.set_state(AdminStates.reminder_date)
-    await callback.message.answer(t("admin.reminder_enter_date"))
-    await callback.answer()
-
-
-@router.message(AdminStates.reminder_date)
-async def reminder_date(message: Message, state: FSMContext, t):
-    parsed = parse_filter_date(message.text or "")
-    if not parsed:
-        await message.answer(t("errors.invalid_date"))
-        return
-    await state.update_data(rem_date=parsed)
-    await state.set_state(AdminStates.reminder_text)
-    await message.answer(t("admin.reminder_enter_text"))
-
-
-@router.message(AdminStates.reminder_text)
-async def reminder_text(message: Message, state: FSMContext, t):
-    text = (message.text or "").strip()
-    if not text:
-        await message.answer(t("errors.general"))
-        return
-    await state.update_data(rem_text=text)
-    await state.set_state(AdminStates.reminder_confirm)
-    await message.answer(t("admin.reminder_confirm"), reply_markup=yes_no_keyboard("remconfirm:yes", "remconfirm:no"))
-
-
-@router.callback_query(AdminStates.reminder_confirm, F.data.startswith("remconfirm:"))
-async def reminder_confirm(callback: CallbackQuery, state: FSMContext, t, bot):
-    answer = callback.data.split(":", 1)[1]
-    await callback.message.edit_reply_markup()
-    if answer == "no":
-        await callback.message.answer(t("admin.broadcast_cancel"))
-        await state.clear()
-        await callback.answer()
-        return
-    data = await state.get_data()
-    sessionmaker = getattr(bot, "sessionmaker", None)
-    service = BroadcastService(bot, sessionmaker=sessionmaker)
-    sent, failed = await service.send_broadcast(
-        data.get("rem_text", ""),
-        document_code=data.get("rem_doc"),
-        expiry_op=data.get("rem_op"),
-        expiry_date=data.get("rem_date"),
+    date_from: dt.date = data["date_from"]
+    date_to: dt.date = data["date_to"]
+    stmt = select(User.telegram_id, User.language).join(MigrationCard).where(
+        and_(MigrationCard.expires_at >= date_from, MigrationCard.expires_at <= date_to)
     )
-    await callback.message.answer(t("admin.reminder_done", sent=sent, failed=failed))
+    users = (await session.execute(stmt)).all()
+    for chat_id, lang in users:
+        await message.bot.send_message(chat_id, message.text, parse_mode=None)
     await state.clear()
+    await message.answer(t("admin.broadcast_done", locale))
+
+
+@router.message(Command("wants"))
+async def list_users(message: Message, session: AsyncSession, t, locale, settings):
+    if not await _is_admin(message.from_user.id, session, settings.superadmin_id):
+        await message.answer(t("admin.access_denied", locale))
+        return
+    await _send_user_page(message, session, locale, t, page=1)
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("page:"))
+async def paginate(callback: CallbackQuery, session: AsyncSession, t, locale):
+    page = int(callback.data.split(":", 1)[1])
+    await _send_user_page(callback.message, session, locale, t, page=page)
     await callback.answer()
 
 
-@router.message(Command("stats"))
-async def stats(message: Message, session: AsyncSession, t):
-    requester = (await session.execute(select(User).where(User.telegram_id == message.from_user.id))).scalar_one_or_none()
-    if not is_admin(requester):
-        await message.answer(t("errors.not_admin"))
+async def _send_user_page(message: Message, session: AsyncSession, locale: str, t, page: int = 1, page_size: int = 5):
+    stmt = select(User).offset((page - 1) * page_size).limit(page_size)
+    rows = (await session.scalars(stmt)).all()
+    buttons = [(f"{row.last_name} {row.first_name}", row.id) for row in rows]
+    kb = admin_user_list_keyboard(buttons, page=page)
+    await message.answer(t("admin.user_list", locale, page=page), reply_markup=kb)
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("user:"))
+async def open_user(callback: CallbackQuery, session: AsyncSession, t, locale):
+    user_id = int(callback.data.split(":", 1)[1])
+    user = await session.get(User, user_id)
+    card = await session.scalar(select(MigrationCard).where(MigrationCard.user_id == user_id))
+    if not user or not card:
+        await callback.answer()
         return
-    count_users = (await session.execute(select(func.count(User.id)))).scalar()
-    langs = (await session.execute(select(User.language, func.count(User.id)).group_by(User.language))).all()
-    citizenships = (await session.execute(select(User.citizenship_code, func.count(User.id)).group_by(User.citizenship_code))).all()
-    active_docs = (
-        await session.execute(
-            select(func.count(UserDocument.id)).where(UserDocument.notifications_enabled.is_(True))
-        )
-    ).scalar()
-    lines = [t("admin.stats_header", users=count_users, active=active_docs)]
-    lines.append(t("admin.stats_languages"))
-    for lang, cnt in langs:
-        lines.append(f"- {lang or '-'}: {cnt}")
-    lines.append(t("admin.stats_citizenships"))
-    for code, cnt in citizenships:
-        lines.append(f"- {code or '-'}: {cnt}")
-    await message.answer("\n".join(lines))
+    phone = user.phone_from_telegram or user.manual_phone or "-"
+    citizenship = user.citizenship.name_ru if user.citizenship else "-"
+    kb = admin_profile_keyboard(user_id=user_id, card_id=card.id, label=t("admin.mark_extended", locale))
+    await callback.message.answer(
+        t(
+            "admin.profile",
+            locale,
+            name=f"{user.last_name} {user.first_name}",
+            citizenship=citizenship,
+            phone=phone,
+            date=card.expires_at.strftime("%d.%m.%Y"),
+        ),
+        reply_markup=kb,
+    )
+    await callback.answer()
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("admin_mark:"))
+async def mark_extended(callback: CallbackQuery, session: AsyncSession, t, locale):
+    _, user_id, card_id = callback.data.split(":", 2)
+    card = await session.get(MigrationCard, int(card_id))
+    if not card:
+        await callback.answer()
+        return
+    service = MigrationCardService(session)
+    await service.mark_extended_by_admin(card, note="admin_marked")
+    await callback.message.answer(t("notifications.admin_extended", locale))
+    user = await session.get(User, card.user_id)
+    user_locale = user.language if user else locale
+    await callback.bot.send_message(card.user.telegram_id, t("notifications.admin_extended", user_locale))
+    kb = travel_keyboard(
+        t("notifications.travel_yes", user_locale),
+        t("notifications.travel_no", user_locale),
+        card.id,
+    )
+    await callback.bot.send_message(card.user.telegram_id, t("notifications.travel_check", user_locale), reply_markup=kb)
+    await session.commit()
+    await callback.answer()
