@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -30,9 +31,9 @@ async def main() -> None:
     async with sessionmaker() as session:
         await ensure_document_types(session)
 
-    bot = Bot(token=settings.bot_token, parse_mode="HTML")
-    bot["sessionmaker"] = sessionmaker
-    bot["settings"] = settings
+    bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode="HTML"))
+    bot.sessionmaker = sessionmaker
+    bot.settings = settings
 
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)

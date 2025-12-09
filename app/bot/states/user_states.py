@@ -6,9 +6,14 @@ class RegistrationStates(StatesGroup):
     enter_citizenship = State()
     confirm_citizenship = State()
     enter_phone = State()
+    ask_migration_card_expiry = State()
     choose_notification_window = State()
     ask_temp_registration = State()
     ask_temp_registration_date = State()
+    ask_medical_exam = State()
+    ask_med_cert_1_date = State()
+    ask_med_cert_2_date = State()
+    ask_med_cert_3_date = State()
     ask_living_place = State()
 
 
@@ -25,3 +30,8 @@ class AdminStates(StatesGroup):
     broadcast_text = State()
     broadcast_confirm = State()
     add_admin = State()
+    reminder_doc_type = State()
+    reminder_operator = State()
+    reminder_date = State()
+    reminder_text = State()
+    reminder_confirm = State()

@@ -26,12 +26,16 @@ class BroadcastService:
         citizenship: str | None = None,
         document_code: str | None = None,
         photo: bytes | None = None,
+        expiry_op: str | None = None,
+        expiry_date = None,
         session: AsyncSession | None = None,
     ) -> tuple[int, int]:
         if session is None:
             async with self.sessionmaker() as session:
-                return await self._send(session, text, language, citizenship, document_code, photo)
-        return await self._send(session, text, language, citizenship, document_code, photo)
+                return await self._send(
+                    session, text, language, citizenship, document_code, photo, expiry_op, expiry_date
+                )
+        return await self._send(session, text, language, citizenship, document_code, photo, expiry_op, expiry_date)
 
     async def _send(
         self,
@@ -41,10 +45,12 @@ class BroadcastService:
         citizenship: str | None,
         document_code: str | None,
         photo: bytes | None,
+        expiry_op: str | None,
+        expiry_date,
     ) -> tuple[int, int]:
         sent = 0
         failed = 0
-        users = await self._get_users(session, language, citizenship, document_code)
+        users = await self._get_users(session, language, citizenship, document_code, expiry_op, expiry_date)
         for user in users:
             try:
                 if photo:
@@ -60,14 +66,28 @@ class BroadcastService:
         return sent, failed
 
     async def _get_users(
-        self, session: AsyncSession, language: str | None, citizenship: str | None, document_code: str | None
+        self,
+        session: AsyncSession,
+        language: str | None,
+        citizenship: str | None,
+        document_code: str | None,
+        expiry_op: str | None,
+        expiry_date,
     ) -> Iterable[User]:
         query = select(User)
+        need_doc_join = bool(document_code or expiry_op)
         if language:
             query = query.where(User.language == language)
         if citizenship:
             query = query.where(User.citizenship_code == citizenship)
-        if document_code:
-            query = query.join(UserDocument).join(DocumentType).where(DocumentType.code == document_code)
+        if need_doc_join:
+            query = query.join(UserDocument).join(DocumentType)
+            if document_code:
+                query = query.where(DocumentType.code == document_code)
+            if expiry_op and expiry_date:
+                if expiry_op == "lte":
+                    query = query.where(UserDocument.current_expiry_date <= expiry_date)
+                elif expiry_op == "gte":
+                    query = query.where(UserDocument.current_expiry_date >= expiry_date)
         result = await session.execute(query)
         return result.scalars().all()
