@@ -28,7 +28,7 @@ services:
         condition: service_healthy
     working_dir: /app
     command: >
-      sh -c "alembic upgrade head && python main.py"
+      sh -c "alembic upgrade head && python -m app.main"
 
     # если бот запускается по-другому, меняешь строку выше, например:
     # command: >
