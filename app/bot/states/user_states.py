@@ -30,3 +30,8 @@ class AdminStates(StatesGroup):
     broadcast_text = State()
     broadcast_confirm = State()
     add_admin = State()
+    reminder_doc_type = State()
+    reminder_operator = State()
+    reminder_date = State()
+    reminder_text = State()
+    reminder_confirm = State()

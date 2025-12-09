@@ -1,5 +1,4 @@
 from __future__ import annotations
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -20,28 +19,17 @@ from app.bot.keyboards.inline import (
 )
 from app.bot.keyboards.reply import contact_keyboard, remove_keyboard
 from app.bot.services.document_service import ensure_user_documents, parse_time_window
+from app.bot.services.country_service import (
+    country_rules,
+    estimate_entry_date,
+    search_countries,
+)
 from app.bot.states.user_states import RegistrationStates
 from app.models.documents import DocumentType, UserDocument
 from app.models.user import User
 
 router = Router()
 
-
-@dataclass
-class CountryRules:
-    registration_days: int
-    medical_days: int
-    migration_card_duration: int
-    visa_required: bool = False
-
-
-CITIZENSHIP_DATA = [
-    {"code": "KAZ", "names": ["казахстан", "kazakhstan", "kaz", "каз"], "eaeu": True},
-    {"code": "KGZ", "names": ["kyrgyzstan", "киргизия", "кыргызстан", "kg", "kgz"], "eaeu": True},
-    {"code": "UZB", "names": ["uzbekistan", "узбекистан", "uzb", "uz"], "eaeu": True},
-    {"code": "ARM", "names": ["armenia", "армения", "arm", "armenia"], "eaeu": True},
-    {"code": "TJK", "names": ["tajikistan", "таджикистан", "tjk", "tj"], "eaeu": True},
-]
 
 NOTIFICATION_WINDOWS = [
     ("09:00-18:00", "09:00–18:00"),
@@ -71,43 +59,6 @@ async def get_or_create_user(session: AsyncSession, telegram_id: int, username: 
         await session.commit()
     await ensure_user_documents(session, user)
     return user
-
-
-def search_citizenship(query: str) -> list[tuple[str, str]]:
-    normalized = query.lower().strip()
-    matches: list[tuple[str, str]] = []
-    for item in CITIZENSHIP_DATA:
-        for name in item["names"]:
-            if normalized.startswith(name) or name.startswith(normalized) or normalized in name:
-                matches.append((item["code"], item["names"][0].capitalize()))
-                break
-    return matches
-
-
-def is_eaeu(code: str | None) -> bool:
-    if not code:
-        return False
-    return any(item["code"] == code and item.get("eaeu") for item in CITIZENSHIP_DATA)
-
-
-def country_rules(settings, citizenship_code: str | None) -> CountryRules:
-    if is_eaeu(citizenship_code):
-        return CountryRules(
-            settings.eaeu_registration_days,
-            settings.eaeu_medical_days,
-            settings.default_migration_card_duration_days,
-            False,
-        )
-    return CountryRules(
-        settings.non_eaeu_registration_days,
-        settings.non_eaeu_medical_days,
-        settings.default_migration_card_duration_days,
-        True,
-    )
-
-
-def estimate_entry_date(migration_expiry, rules: CountryRules) -> datetime.date:
-    return migration_expiry - timedelta(days=rules.migration_card_duration)
 
 
 def parse_date_by_language(value: str, language: str) -> datetime.date:
@@ -165,7 +116,7 @@ async def choose_language(callback: CallbackQuery, state: FSMContext, session: A
 
 @router.message(RegistrationStates.enter_citizenship)
 async def ask_citizenship(message: Message, state: FSMContext, session: AsyncSession, t, language: str):
-    matches = search_citizenship(message.text or "")
+    matches = search_countries(message.text or "")
     if not matches:
         await message.answer(t("errors.citizenship_not_found"))
         return

@@ -29,6 +29,8 @@
     "help": "Help",
     "ready": "Main menu",
     "settings_hint": "Settings: /language — change language. /status — document deadlines. /delete_me — delete your data.",
+    "no_changes": "Already showing the latest data",
+    "updated": "Updated",
     "exit_check": "If you left Russia and returned, update your migration card so the deadlines refresh."
   },
   "buttons": {
@@ -86,8 +88,26 @@
     "broadcast_confirm": "Send message to selected users? Type Yes/No",
     "broadcast_cancel": "Broadcast cancelled",
     "broadcast_done": "Broadcast finished. Sent: {sent}, failed: {failed}",
+    "reminder_choose_doc": "Choose which document to remind about",
+    "reminder_choose_operator": "Filter by expiry date? Tap ≥ or ≤ and then send the date, or Skip to send to everyone.",
+    "reminder_enter_date": "Enter the expiry date to filter (YYYY-MM-DD or DD.MM.YYYY)",
+    "reminder_enter_text": "Send the reminder text to deliver to users.",
+    "reminder_confirm": "Send this reminder?",
+    "reminder_done": "Reminder sent. Delivered {sent}, failed {failed}.",
+    "doc_migration": "Migration card",
+    "doc_temp_registration": "Temporary registration",
+    "doc_visa": "Visa",
     "stats_header": "Stats: users {users}, notifications on {active}",
     "stats_languages": "By languages:",
     "stats_citizenships": "By citizenships:"
+  },
+  "country": {
+    "prompt": "Send a country name or ISO code to check visa/EAEU status.",
+    "not_found": "Country not found. Please try another name or ISO code.",
+    "info": "{name} ({code}). {bloc}. {visa}",
+    "visa_required": "Visa required",
+    "no_visa": "Visa-free",
+    "eaeu": "EAEU member",
+    "non_eaeu": "Non-EAEU"
   }
 }

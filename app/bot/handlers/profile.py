@@ -1,6 +1,7 @@
 from datetime import date
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.handlers.documents import doc_display_name
 from app.bot.handlers.start import language_keyboard
 from app.bot.keyboards.inline import main_menu_keyboard, menu_back_keyboard, yes_no_keyboard
+from app.bot.services.country_service import get_country, search_countries
 from app.bot.states.user_states import RegistrationStates
 from app.models.documents import DocumentType, UserDocument
 from app.models.user import User
@@ -64,6 +66,24 @@ async def help_command(message: Message, t):
     await message.answer(t("help.text"))
 
 
+@router.message(Command("country"))
+async def country_lookup(message: Message, t):
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer(t("country.prompt"))
+        return
+    query = parts[1]
+    matches = search_countries(query)
+    if not matches:
+        await message.answer(t("country.not_found"))
+        return
+    code, name = matches[0]
+    country = get_country(code)
+    visa = t("country.visa_required") if country and country.get("visa_required") else t("country.no_visa")
+    bloc = t("country.eaeu") if country and country.get("is_eaeu") else t("country.non_eaeu")
+    await message.answer(t("country.info", name=name, code=code, bloc=bloc, visa=visa))
+
+
 @router.message(Command("delete_me"))
 async def delete_me(message: Message, t):
     await message.answer(t("delete.confirm"), reply_markup=yes_no_keyboard("delete:yes", "delete:no"))
@@ -105,7 +125,19 @@ def documents_keyboard() -> InlineKeyboardMarkup:
 @router.callback_query(F.data == "menu:documents")
 async def menu_documents(callback: CallbackQuery, session: AsyncSession, t, language: str, translator):
     text, has_expired = await render_documents_overview(session, callback.from_user.id, t, language, translator)
-    await callback.message.edit_text(text, reply_markup=documents_keyboard())
+    answered = False
+    if callback.message.text == text:
+        await callback.answer(t("menu.no_changes"))
+        answered = True
+    else:
+        try:
+            await callback.message.edit_text(text, reply_markup=documents_keyboard())
+        except TelegramBadRequest:
+            await callback.answer(t("menu.no_changes"))
+            answered = True
+        else:
+            await callback.answer(t("menu.updated"))
+            answered = True
     if has_expired:
         await callback.message.answer(
             t("alerts.visit_b103"),
@@ -113,7 +145,8 @@ async def menu_documents(callback: CallbackQuery, session: AsyncSession, t, lang
                 inline_keyboard=[[InlineKeyboardButton(text=t("alerts.map"), url=B103_MAP_URL)]]
             ),
         )
-    await callback.answer()
+    if not answered:
+        await callback.answer()
 
 
 @router.callback_query(F.data == "menu:help")
