@@ -17,6 +17,17 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Ensure enums are recreated with the expected lowercase values even if a stale type
+    # was left behind from earlier iterations of the project.
+    migration_card_status = sa.Enum(MigrationCardStatus, name='migrationcardstatus')
+    migration_event = sa.Enum(MigrationEvent, name='migrationevent')
+
+    op.execute("DROP TYPE IF EXISTS migrationcardstatus")
+    op.execute("DROP TYPE IF EXISTS migrationevent")
+
+    migration_card_status.create(op.get_bind(), checkfirst=True)
+    migration_event.create(op.get_bind(), checkfirst=True)
+
     op.create_table(
         'countries',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -61,7 +72,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('expires_at', sa.Date(), nullable=False),
-        sa.Column('status', sa.Enum(MigrationCardStatus, name='migrationcardstatus'), nullable=False, server_default=MigrationCardStatus.ACTIVE.value),
+        sa.Column('status', migration_card_status, nullable=False, server_default=MigrationCardStatus.ACTIVE.value),
         sa.Column('paused_by_user', sa.Boolean(), nullable=False, server_default=sa.text('false')),
         sa.Column('last_notified_on', sa.Date(), nullable=True),
         sa.Column('needs_travel_confirmation', sa.Boolean(), nullable=False, server_default=sa.text('false')),
@@ -78,7 +89,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('migration_card_id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('event', sa.Enum(MigrationEvent, name='migrationevent'), nullable=False),
+        sa.Column('event', migration_event, nullable=False),
         sa.Column('previous_expires_at', sa.Date(), nullable=True),
         sa.Column('expires_at', sa.Date(), nullable=True),
         sa.Column('in_russia', sa.Boolean(), nullable=True),
