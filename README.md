@@ -42,17 +42,18 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-Создайте файл `.env` со значениями:
+Создайте файл `.env` со значениями (база данных должна быть PostgreSQL):
 ```
 BOT_TOKEN=123456:token
 BOT_SUPERADMIN_ID=123456789
-BOT_DATABASE__URL=sqlite+aiosqlite:///./bot.db   # или другой async URL
+BOT_DATABASE__URL=postgresql+asyncpg://admin:qwerty12345@localhost:5432/botdb1
 BOT_TIMEZONE=Europe/Moscow
 ```
 
 ## Запуск
 ```bash
+alembic upgrade head
 python -m app.main
 ```
 
-База данных создается автоматически при старте; справочник стран синхронизируется из `app/data/countries.json`.
+Схема базы данных поднимается миграциями Alembic (используется PostgreSQL), затем при старте синхронизируется справочник стран из `app/data/countries.json`.

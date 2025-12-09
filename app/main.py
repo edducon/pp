@@ -33,7 +33,7 @@ async def main() -> None:
     dp = Dispatcher(storage=storage)
 
     database = Database(settings)
-    await database.create_schema()
+    await database.run_migrations()
     async with database.session() as session:
         await country_service.sync(session)
 
