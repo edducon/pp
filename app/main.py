@@ -1,68 +1,57 @@
+from __future__ import annotations
+
 import asyncio
+import logging
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.bot.handlers import admin, documents, notifications, profile, start
-from app.bot.i18n.loader import TranslationLoader
-from app.bot.middlewares.db_session import DbSessionMiddleware
-from app.bot.middlewares.throttling import ThrottlingMiddleware
-from app.bot.middlewares.user_locale import UserLocaleMiddleware
-from app.bot.services.document_service import ensure_document_types
-from app.bot.services.notifications_service import NotificationService
+from app.bot.handlers import admin, user
+from app.bot.middlewares.db import DbSessionMiddleware
+from app.bot.middlewares.language import LanguageMiddleware
 from app.config import load_settings
-from app.logging_config import setup_logging
+from app.database import Database
+from app.logging import setup_logging
+from app.services.countries import CountryService
+from app.services.localization import Translator
+from app.services.notifier import Notifier
 
 
 async def main() -> None:
+    setup_logging()
     settings = load_settings()
-    setup_logging(settings.log_file)
+    translator = Translator(Path(__file__).parent / "locales")
+    translator.load()
+    country_service = CountryService(Path(__file__).parent / "data" / "countries.json")
+    country_service.load_dataset()
 
-    locales_dir = Path(__file__).parent / "locales"
-    translator = TranslationLoader(locales_dir).load()
-
-    engine = create_async_engine(settings.database_url, echo=False, future=True)
-    sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
-
-    async with sessionmaker() as session:
-        await ensure_document_types(session)
-
-    bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode="HTML"))
-    bot.sessionmaker = sessionmaker
-    bot.settings = settings
-
+    bot = Bot(token=settings.token, parse_mode=ParseMode.HTML)
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
 
-    dp.update.middleware(DbSessionMiddleware(sessionmaker))
-    dp.update.middleware(UserLocaleMiddleware(translator))
-    dp.message.middleware(ThrottlingMiddleware())
-    dp.callback_query.middleware(ThrottlingMiddleware())
+    database = Database(settings)
+    await database.create_schema()
+    async with database.session() as session:
+        await country_service.sync(session)
 
-    dp.include_router(start.router)
-    dp.include_router(profile.router)
-    dp.include_router(documents.router)
-    dp.include_router(notifications.router)
+    user.setup_country_service(country_service)
+
+    dp.update.outer_middleware(DbSessionMiddleware(database.session_factory))
+    dp.update.outer_middleware(LanguageMiddleware(translator))
+    dp.workflow_data.update({"settings": settings})
+
+    dp.include_router(user.router)
     dp.include_router(admin.router)
 
     scheduler = AsyncIOScheduler(timezone=settings.timezone)
-    notification_service = NotificationService(
-        bot,
-        sessionmaker=sessionmaker,
-        translator=translator,
-        timezone=settings.timezone,
-        default_window_start=settings.default_notification_start,
-        default_window_end=settings.default_notification_end,
-    )
-    NotificationService.add_job(scheduler, notification_service, minutes=settings.scheduler_interval_minutes)
-    scheduler.start()
+    notifier = Notifier(scheduler, database.session_factory, bot, translator)
+    notifier.start()
 
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    logging.info("Bot starting")
+    await dp.start_polling(bot, settings=settings, translator=translator)
 
 
 if __name__ == "__main__":
