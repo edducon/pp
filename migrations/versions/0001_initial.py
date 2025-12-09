@@ -22,11 +22,11 @@ def upgrade() -> None:
     migration_card_status = sa.Enum(MigrationCardStatus, name='migrationcardstatus')
     migration_event = sa.Enum(MigrationEvent, name='migrationevent')
 
-    op.execute("DROP TYPE IF EXISTS migrationcardstatus")
-    op.execute("DROP TYPE IF EXISTS migrationevent")
+    op.execute("DROP TYPE IF EXISTS migrationcardstatus CASCADE")
+    op.execute("DROP TYPE IF EXISTS migrationevent CASCADE")
 
-    migration_card_status.create(op.get_bind(), checkfirst=True)
-    migration_event.create(op.get_bind(), checkfirst=True)
+    migration_card_status.create(op.get_bind(), checkfirst=False)
+    migration_event.create(op.get_bind(), checkfirst=False)
 
     op.create_table(
         'countries',
