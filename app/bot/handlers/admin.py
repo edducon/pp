@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -47,7 +47,7 @@ def is_admin(user: User | None) -> bool:
     return user.is_admin or user.telegram_id == settings.superadmin_id
 
 
-def parse_filter_date(text: str) -> datetime.date | None:
+def parse_filter_date(text: str) -> date | None:
     raw = text.strip()
     for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
         try:

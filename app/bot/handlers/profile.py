@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.handlers.documents import doc_display_name
 from app.bot.handlers.start import language_keyboard
 from app.bot.keyboards.inline import main_menu_keyboard, menu_back_keyboard, yes_no_keyboard
-from app.bot.services.country_service import get_country, search_countries
 from app.bot.states.user_states import RegistrationStates
 from app.models.documents import DocumentType, UserDocument
 from app.models.user import User

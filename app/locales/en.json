@@ -101,13 +101,5 @@
     "stats_languages": "By languages:",
     "stats_citizenships": "By citizenships:"
   },
-  "country": {
-    "prompt": "Send a country name or ISO code to check visa/EAEU status.",
-    "not_found": "Country not found. Please try another name or ISO code.",
-    "info": "{name} ({code}). {bloc}. {visa}",
-    "visa_required": "Visa required",
-    "no_visa": "Visa-free",
-    "eaeu": "EAEU member",
-    "non_eaeu": "Non-EAEU"
-  }
+  
 }
